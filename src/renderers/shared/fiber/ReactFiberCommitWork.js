@@ -322,11 +322,41 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
+  function revertLifeCyclesSafely(current : ?Fiber, finishedWork : Fiber) : void {
+    switch (finishedWork.tag) {
+      case ClassComponent: {
+        const instance = finishedWork.stateNode;
+        if (!current) {
+          try {
+            if (typeof instance.componentWillUnmount === 'function') {
+              instance.componentWillUnmount();
+            }
+          } catch (error) {
+            // Ignore any errors because we are already in error state.
+          }
+        }
+        detachRefIfNeeded(current, finishedWork);
+        return;
+      }
+      case HostComponent: {
+        detachRefIfNeeded(current, finishedWork);
+        return;
+      }
+      case HostText: {
+        // We have no life-cycles associated with text.
+        return;
+      }
+      default:
+        throw new Error('This unit of work tag should not have side-effects.');
+    }
+  }
+
   return {
     commitInsertion,
     commitDeletion,
     commitWork,
     commitLifeCycles,
+    revertLifeCyclesSafely,
   };
 
 };

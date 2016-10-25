@@ -705,16 +705,14 @@ describe('ReactErrorBoundaries', () => {
 
   if (ReactDOMFeatureFlags.useFiber) {
     // This test implements a new feature in Fiber.
-    xit('catches errors in componentDidMount', () => {
+    it('catches errors in componentDidMount', () => {
       var container = document.createElement('div');
-      expect(() => {
-        ReactDOM.render(
-          <ErrorBoundary>
-            <BrokenComponentDidMount />
-          </ErrorBoundary>,
-          container
-        );
-      }).toThrow();
+      ReactDOM.render(
+        <ErrorBoundary>
+          <BrokenComponentDidMount />
+        </ErrorBoundary>,
+        container
+      );
       expect(log).toEqual([
         'ErrorBoundary constructor',
         'ErrorBoundary componentWillMount',
@@ -723,12 +721,11 @@ describe('ReactErrorBoundaries', () => {
         'BrokenComponentDidMount componentWillMount',
         'BrokenComponentDidMount render',
         'BrokenComponentDidMount componentDidMount [!]',
+        'BrokenComponentDidMount componentWillUnmount',
         'ErrorBoundary unstable_handleError',
         'ErrorBoundary constructor',
         'ErrorBoundary componentWillMount',
         'ErrorBoundary render error',
-        // TODO: this doesn't work yet in Fiber but it should.
-        // The effect must have gotten lost when it threw the first time.
         'ErrorBoundary componentDidMount',
       ]);
 
@@ -736,7 +733,6 @@ describe('ReactErrorBoundaries', () => {
       ReactDOM.unmountComponentAtNode(container);
       expect(log).toEqual([
         'ErrorBoundary componentWillUnmount',
-        'BrokenComponentDidMount componentWillUnmount',
       ]);
     });
   } else {
@@ -1410,7 +1406,7 @@ describe('ReactErrorBoundaries', () => {
 
   if (ReactDOMFeatureFlags.useFiber) {
     // This test implements a new feature in Fiber.
-    xit('catches errors in componentDidUpdate', () => {
+    it('catches errors in componentDidUpdate', () => {
       var container = document.createElement('div');
       ReactDOM.render(
         <ErrorBoundary>
@@ -1420,14 +1416,12 @@ describe('ReactErrorBoundaries', () => {
       );
 
       log.length = 0;
-      expect(() => {
-        ReactDOM.render(
-          <ErrorBoundary>
-            <BrokenComponentDidUpdate />
-          </ErrorBoundary>,
-          container
-        );
-      }).toThrow();
+      ReactDOM.render(
+        <ErrorBoundary>
+          <BrokenComponentDidUpdate />
+        </ErrorBoundary>,
+        container
+      );
       expect(log).toEqual([
         'ErrorBoundary componentWillReceiveProps',
         'ErrorBoundary componentWillUpdate',
@@ -1439,8 +1433,7 @@ describe('ReactErrorBoundaries', () => {
         'ErrorBoundary unstable_handleError',
         'ErrorBoundary componentWillUpdate',
         'ErrorBoundary render error',
-        // TODO: this doesn't work yet in Fiber but it should.
-        // The effect must have gotten lost when it threw the first time.
+        'BrokenComponentDidUpdate componentWillUnmount',
         'ErrorBoundary componentDidUpdate',
       ]);
 
@@ -1448,7 +1441,6 @@ describe('ReactErrorBoundaries', () => {
       ReactDOM.unmountComponentAtNode(container);
       expect(log).toEqual([
         'ErrorBoundary componentWillUnmount',
-        'BrokenComponentDidUpdate componentWillUnmount',
       ]);
     });
   } else {

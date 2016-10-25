@@ -55,7 +55,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
 
   const { beginWork } = ReactFiberBeginWork(config, scheduleUpdate);
   const { completeWork } = ReactFiberCompleteWork(config);
-  const { commitInsertion, commitDeletion, commitWork, commitLifeCycles } =
+  const { commitInsertion, commitDeletion, commitWork, commitLifeCycles, revertLifeCyclesSafely } =
     ReactFiberCommitWork(config);
 
   const scheduleAnimationCallback = config.scheduleAnimationCallback;
@@ -144,21 +144,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     // Next, we'll perform all life-cycles and ref callbacks. Life-cycles
     // happens as a separate pass so that all effects in the entire tree have
     // already been invoked.
-    effectfulFiber = finishedWork.firstEffect;
-    while (effectfulFiber) {
-      if (effectfulFiber.effectTag === Update ||
-          effectfulFiber.effectTag === PlacementAndUpdate) {
-        const current = effectfulFiber.alternate;
-        commitLifeCycles(current, effectfulFiber);
-      }
-      const next = effectfulFiber.nextEffect;
-      // Ensure that we clean these up so that we don't accidentally keep them.
-      // I'm not actually sure this matters because we can't reset firstEffect
-      // and lastEffect since they're on every node, not just the effectful
-      // ones. So we have to clean everything as we reuse nodes anyway.
-      effectfulFiber.nextEffect = null;
-      effectfulFiber = next;
-    }
+    tryCommitAllLifeCycles(finishedWork);
 
     // Finally if the root itself had an effect, we perform that since it is not
     // part of the effect list.
@@ -166,6 +152,55 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       const current = finishedWork.alternate;
       commitWork(current, finishedWork);
     }
+  }
+
+  function tryCommitAllLifeCycles(finishedWork) {
+    let effectfulFiber;
+    try {
+      effectfulFiber = finishedWork.firstEffect;
+      while (effectfulFiber) {
+        if (effectfulFiber.effectTag === Update ||
+            effectfulFiber.effectTag === PlacementAndUpdate) {
+          const current = effectfulFiber.alternate;
+          commitLifeCycles(current, effectfulFiber);
+        }
+        effectfulFiber = effectfulFiber.nextEffect;
+      }
+    } catch (err) {
+      // Slow path: we want to issue a componentWillUnmount()
+      // for any component that received a componentDidMount()
+      // but won't end up in the tree because of the error.
+      const failedFiber = effectfulFiber;
+      revertLifeCyclesCommittedSoFar(finishedWork, failedFiber);
+      throw err;
+    }
+  }
+
+  function revertLifeCyclesCommittedSoFar(finishedWork, failedEffect) {
+    // Gather effects in an array because this is a rare code path.
+    // We need to call them in the reverse order.
+    const fibersCommittedSoFar = [];
+
+    // Collect all the effects we have committed so far.
+    let committedFiber = finishedWork.firstEffect;
+    while (committedFiber && committedFiber !== failedEffect.nextEffect) {
+      if (committedFiber.effectTag === Update ||
+          committedFiber.effectTag === PlacementAndUpdate) {
+        fibersCommittedSoFar.push(committedFiber);
+      }
+      committedFiber = committedFiber.nextEffect;
+    }
+
+    // Safely try to apply the opposite hooks in the opposite order.
+    fibersCommittedSoFar.reverse();
+    fibersCommittedSoFar.forEach(fiber => {
+      const current = fiber.alternate;
+      // Any errors thrown in componentWillUnmount() here
+      // will be ignored because we are already in the error
+      // recovery mode, and the underlying error will be
+      // passed to the error boundary or rethrown.
+      revertLifeCyclesSafely(current, fiber);
+    });
   }
 
   function resetWorkPriority(workInProgress : Fiber) {
@@ -253,12 +288,14 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
             'related to the return field.'
           );
         }
-        root.current = workInProgress;
         // TODO: We can be smarter here and only look for more work in the
         // "next" scheduled work since we've already scanned passed. That
         // also ensures that work scheduled during reconciliation gets deferred.
         // const hasMoreWork = workInProgress.pendingWorkPriority !== NoWork;
         commitAllWork(workInProgress);
+        // Swap the pointer after committing all work so that if committing fails,
+        // we still treat it as a work in progress in case there is an error boundary.
+        root.current = workInProgress;
         const nextWork = findNextUnitOfWork();
         // if (!nextWork && hasMoreWork) {
           // TODO: This can happen when some deep work completes and we don't
