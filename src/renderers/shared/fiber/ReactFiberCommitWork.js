@@ -351,11 +351,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       case ClassComponent: {
         const instance = finishedWork.stateNode;
         if (!current) {
-          try {
-            if (typeof instance.componentWillUnmount === 'function') {
-              instance.componentWillUnmount();
-            }
-          } catch (error) {
+          if (typeof instance.componentWillUnmount === 'function') {
+            tryCallComponentWillUnmount(instance);
             // Ignore any errors because we are already in error state.
           }
         }
