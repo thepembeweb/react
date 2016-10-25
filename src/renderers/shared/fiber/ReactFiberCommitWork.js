@@ -28,6 +28,7 @@ var { callCallbacks } = require('ReactFiberUpdateQueue');
 var {
   Placement,
   PlacementAndUpdate,
+  CompletedDeletion,
 } = require('ReactTypeOfSideEffect');
 
 module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
@@ -155,7 +156,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitNestedUnmounts(root : Fiber) {
+  function commitNestedUnmounts(root : Fiber, safely : boolean) {
     // While we're inside a removed host node we don't want to call
     // removeChild on the inner nodes because they're removed by the top
     // call anyway. We also want to call componentWillUnmount on all
@@ -163,7 +164,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     // we do an inner loop while we're still inside the host node.
     let node : Fiber = root;
     while (true) {
-      commitUnmount(node);
+      commitUnmount(node, safely);
       if (node.child) {
         // TODO: Coroutines need to visit the stateNode.
         node = node.child;
@@ -182,7 +183,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitDeletion(current : Fiber) : void {
+  function commitDeletion(current : Fiber, safely : boolean) : void {
     // Recursively delete all host nodes from the parent.
     // TODO: Error handling.
     const parent = getHostParent(current);
@@ -194,14 +195,14 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     let node : Fiber = current;
     while (true) {
       if (node.tag === HostComponent || node.tag === HostText) {
-        commitNestedUnmounts(node);
+        commitNestedUnmounts(node, safely);
         // After all the children have unmounted, it is now safe to remove the
         // node from the tree.
         if (parent) {
           removeChild(parent, node.stateNode);
         }
       } else {
-        commitUnmount(node);
+        commitUnmount(node, safely);
         if (node.child) {
           // TODO: Coroutines need to visit the stateNode.
           node = node.child;
@@ -221,13 +222,27 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitUnmount(current : Fiber) : void {
+  function commitUnmount(current : Fiber, safely : boolean) : void {
+    // Make sure we mark this deletion as completed so that we don't
+    // attempt to perform it again if one of the deletions fails, and
+    // error boundary tries to unmount this subtree again.
+    current.effectTag = CompletedDeletion;
+
+    // TODO: we currently don't try/catch errors thrown inside callback refs.
+    // We probably should, and for mounting as well as unmounting.
     switch (current.tag) {
       case ClassComponent: {
         detachRef(current);
         const instance = current.stateNode;
         if (typeof instance.componentWillUnmount === 'function') {
-          instance.componentWillUnmount();
+          const error = tryCallComponentWillUnmount(instance);
+          if (error != null) {
+            if (!safely) {
+              throw error;
+            }
+            // Otherwise, ignore the error because we are already cleaning up
+            // due to another error that is being handled by a boundary.
+          }
         }
         return;
       }
@@ -235,6 +250,15 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         detachRef(current);
         return;
       }
+    }
+  }
+
+  function tryCallComponentWillUnmount(instance) {
+    try {
+      instance.componentWillUnmount();
+      return null;
+    } catch (error) {
+      return error;
     }
   }
 

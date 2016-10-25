@@ -109,9 +109,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     return null;
   }
 
-  function commitAllWork(finishedWork : Fiber) {
+  function commitAllWork(finishedWork : Fiber, isHandlingError : boolean) {
     // Commit all the side-effects within a tree.
-    // TODO: Error handling.
 
     // First, we'll perform all the host insertions, updates, deletions and
     // ref unmounts.
@@ -134,7 +133,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
           break;
         }
         case Deletion: {
-          commitDeletion(effectfulFiber);
+          const safely = isHandlingError;
+          commitDeletion(effectfulFiber, safely);
           break;
         }
       }
@@ -221,7 +221,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     workInProgress.pendingWorkPriority = newPriority;
   }
 
-  function completeUnitOfWork(workInProgress : Fiber) : ?Fiber {
+  function completeUnitOfWork(workInProgress : Fiber, isHandlingError : boolean) : ?Fiber {
     while (true) {
       // The current, flushed, state of this fiber is the alternate.
       // Ideally nothing should rely on this, but relying on it here
@@ -292,7 +292,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         // "next" scheduled work since we've already scanned passed. That
         // also ensures that work scheduled during reconciliation gets deferred.
         // const hasMoreWork = workInProgress.pendingWorkPriority !== NoWork;
-        commitAllWork(workInProgress);
+        commitAllWork(workInProgress, isHandlingError);
         // Swap the pointer after committing all work so that if committing fails,
         // we still treat it as a work in progress in case there is an error boundary.
         root.current = workInProgress;
@@ -309,7 +309,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function performUnitOfWork(workInProgress : Fiber) : ?Fiber {
+  function performUnitOfWork(workInProgress : Fiber, isHandlingError : boolean) : ?Fiber {
     // The current, flushed, state of this fiber is the alternate.
     // Ideally nothing should rely on this, but relying on it here
     // means that we don't need an additional field on the work in
@@ -330,7 +330,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         ReactFiberInstrumentation.debugTool.onWillCompleteWork(workInProgress);
       }
       // If this doesn't spawn new work, complete the current work.
-      next = completeUnitOfWork(workInProgress);
+      next = completeUnitOfWork(workInProgress, isHandlingError);
       if (__DEV__ && ReactFiberInstrumentation.debugTool) {
         ReactFiberInstrumentation.debugTool.onDidCompleteWork(workInProgress);
       }
@@ -345,7 +345,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
     while (nextUnitOfWork) {
       if (deadline.timeRemaining() > timeHeuristicForUnitOfWork) {
-        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+        nextUnitOfWork = performUnitOfWork(nextUnitOfWork, false);
         if (!nextUnitOfWork) {
           // Find more work. We might have time to complete some more.
           nextUnitOfWork = findNextUnitOfWork();
@@ -410,7 +410,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     nextUnitOfWork = findNextUnitOfWork();
     while (nextUnitOfWork &&
            nextPriorityLevel !== NoWork) {
-      nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+      nextUnitOfWork = performUnitOfWork(nextUnitOfWork, false);
       if (!nextUnitOfWork) {
         // Keep searching for animation work until there's no more left
         nextUnitOfWork = findNextUnitOfWork();
@@ -517,7 +517,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       }
       // Restart work from the root and try to re-render the errored tree.
       while (fiber) {
-        fiber = performUnitOfWork(fiber);
+        fiber = performUnitOfWork(fiber, true);
       }
     } catch (nextError) {
       // Propagate error to the next boundary or rethrow.

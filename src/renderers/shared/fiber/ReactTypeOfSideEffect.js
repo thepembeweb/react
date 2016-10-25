@@ -20,4 +20,5 @@ module.exports = {
   Update: 2,
   PlacementAndUpdate: 3,
   Deletion: 4,
+  CompletedDeletion: 5,
 };
