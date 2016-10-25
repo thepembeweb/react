@@ -154,29 +154,31 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function tryCommitAllLifeCycles(finishedWork) {
-    let effectfulFiber;
+  function tryCommitAllLifeCycles(finishedWork : Fiber) {
+    let effectfulFiber = finishedWork.firstEffect;
     try {
-      effectfulFiber = finishedWork.firstEffect;
       while (effectfulFiber) {
         if (effectfulFiber.effectTag === Update ||
             effectfulFiber.effectTag === PlacementAndUpdate) {
           const current = effectfulFiber.alternate;
           commitLifeCycles(current, effectfulFiber);
         }
-        effectfulFiber = effectfulFiber.nextEffect;
+        const next = effectfulFiber.nextEffect;
+        effectfulFiber = next;
       }
     } catch (err) {
       // Slow path: we want to issue a componentWillUnmount()
       // for any component that received a componentDidMount()
       // but won't end up in the tree because of the error.
       const failedFiber = effectfulFiber;
-      revertLifeCyclesCommittedSoFar(finishedWork, failedFiber);
+      if (failedFiber) {
+        revertLifeCyclesCommittedSoFar(finishedWork, failedFiber);
+      }
       throw err;
     }
   }
 
-  function revertLifeCyclesCommittedSoFar(finishedWork, failedEffect) {
+  function revertLifeCyclesCommittedSoFar(finishedWork : Fiber, failedEffect : Fiber) {
     // Gather effects in an array because this is a rare code path.
     // We need to call them in the reverse order.
     const fibersCommittedSoFar = [];
@@ -499,7 +501,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
 
       // First, traverse upwards and set pending synchronous priority on the whole tree.
       let fiber = errorBoundary;
-      while (true) {
+      while (fiber) {
         fiber.pendingWorkPriority = SynchronousPriority;
         if (fiber.alternate) {
           fiber.alternate.pendingWorkPriority = SynchronousPriority;

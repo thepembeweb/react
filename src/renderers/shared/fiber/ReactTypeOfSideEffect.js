@@ -12,7 +12,7 @@
 
 'use strict';
 
-export type TypeOfSideEffect = 0 | 1 | 2 | 3 | 4;
+export type TypeOfSideEffect = 0 | 1 | 2 | 3 | 4 | 5;
 
 module.exports = {
   NoEffect: 0,
