@@ -235,13 +235,10 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         detachRef(current);
         const instance = current.stateNode;
         if (typeof instance.componentWillUnmount === 'function') {
-          const error = tryCallComponentWillUnmount(instance);
-          if (error != null) {
-            if (!safely) {
-              throw error;
-            }
-            // Otherwise, ignore the error because we are already cleaning up
-            // due to another error that is being handled by a boundary.
+          if (safely) {
+            callComponentWillUnmountAndIgnoreErrors(instance);
+          } else {
+            instance.componentWillUnmount();
           }
         }
         return;
@@ -253,12 +250,12 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function tryCallComponentWillUnmount(instance) {
+  function callComponentWillUnmountAndIgnoreErrors(instance) {
     try {
       instance.componentWillUnmount();
-      return null;
     } catch (error) {
-      return error;
+      // Ignore any errors because we are already cleaning up
+      // due to another error that is being handled by a boundary.
     }
   }
 
@@ -352,8 +349,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         const instance = finishedWork.stateNode;
         if (!current) {
           if (typeof instance.componentWillUnmount === 'function') {
-            tryCallComponentWillUnmount(instance);
             // Ignore any errors because we are already in error state.
+            callComponentWillUnmountAndIgnoreErrors(instance);
           }
         }
         detachRefIfNeeded(current, finishedWork);
