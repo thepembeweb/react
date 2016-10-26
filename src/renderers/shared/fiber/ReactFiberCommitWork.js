@@ -183,7 +183,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function unmountHostComponents(parent, current) {
+  function unmountHostComponents(parent, current, safely) {
     // We only have the top Fiber that was inserted but we need recurse down its
     // children to find all the terminal nodes.
     let node : Fiber = current;
@@ -216,12 +216,12 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitDeletion(current : Fiber) : void {
+  function commitDeletion(current : Fiber, safely : boolean) : void {
     // Recursively delete all host nodes from the parent.
     // TODO: Error handling.
     const parent = getHostParent(current);
 
-    unmountHostComponents(parent, current);
+    unmountHostComponents(parent, current, safely);
 
     // Cut off the return pointers to disconnect it from the tree. Ideally, we
     // should clear the child pointer of the parent alternate to let this
@@ -236,7 +236,12 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitUnmount(current : Fiber) : void {
+  function commitUnmount(current : Fiber, safely : boolean) : void {
+    // Make sure we mark this deletion as completed so that we don't
+    // attempt to perform it again if one of the deletions fails, and
+    // error boundary tries to unmount this subtree again.
+    current.effectTag = CompletedDeletion;
+
     switch (current.tag) {
       case ClassComponent: {
         detachRef(current);
