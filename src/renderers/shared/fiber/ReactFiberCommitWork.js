@@ -183,15 +183,9 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitDeletion(current : Fiber, safely : boolean) : void {
-    // Recursively delete all host nodes from the parent.
-    // TODO: Error handling.
-    const parent = getHostParent(current);
+  function unmountHostComponents(parent, current) {
     // We only have the top Fiber that was inserted but we need recurse down its
     // children to find all the terminal nodes.
-    // TODO: Call componentWillUnmount on all classes as needed. Recurse down
-    // removed HostComponents but don't call removeChild on already removed
-    // children.
     let node : Fiber = current;
     while (true) {
       if (node.tag === HostComponent || node.tag === HostText) {
@@ -222,14 +216,27 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitUnmount(current : Fiber, safely : boolean) : void {
-    // Make sure we mark this deletion as completed so that we don't
-    // attempt to perform it again if one of the deletions fails, and
-    // error boundary tries to unmount this subtree again.
-    current.effectTag = CompletedDeletion;
+  function commitDeletion(current : Fiber) : void {
+    // Recursively delete all host nodes from the parent.
+    // TODO: Error handling.
+    const parent = getHostParent(current);
 
-    // TODO: we currently don't try/catch errors thrown inside callback refs.
-    // We probably should, and for mounting as well as unmounting.
+    unmountHostComponents(parent, current);
+
+    // Cut off the return pointers to disconnect it from the tree. Ideally, we
+    // should clear the child pointer of the parent alternate to let this
+    // get GC:ed but we don't know which for sure which parent is the current
+    // one so we'll settle for GC:ing the subtree of this child. This child
+    // itself will be GC:ed when the parent updates the next time.
+    current.return = null;
+    current.child = null;
+    if (current.alternate) {
+      current.alternate.child = null;
+      current.alternate.return = null;
+    }
+  }
+
+  function commitUnmount(current : Fiber) : void {
     switch (current.tag) {
       case ClassComponent: {
         detachRef(current);

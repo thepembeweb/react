@@ -20,6 +20,7 @@ import type { PriorityLevel } from 'ReactPriorityLevel';
 var ReactFiberBeginWork = require('ReactFiberBeginWork');
 var ReactFiberCompleteWork = require('ReactFiberCompleteWork');
 var ReactFiberCommitWork = require('ReactFiberCommitWork');
+var ReactCurrentOwner = require('ReactCurrentOwner');
 
 var { cloneFiber } = require('ReactFiber');
 
@@ -119,12 +120,18 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       switch (effectfulFiber.effectTag) {
         case Placement: {
           commitInsertion(effectfulFiber);
+          // Clear the effect tag so that we know that this is inserted, before
+          // any life-cycles like componentDidMount gets called.
+          effectfulFiber.effectTag = NoWork;
           break;
         }
         case PlacementAndUpdate: {
           commitInsertion(effectfulFiber);
           const current = effectfulFiber.alternate;
           commitWork(current, effectfulFiber);
+          // Clear the effect tag so that we know that this is inserted, before
+          // any life-cycles like componentDidMount gets called.
+          effectfulFiber.effectTag = Update;
           break;
         }
         case Update: {
@@ -144,7 +151,23 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     // Next, we'll perform all life-cycles and ref callbacks. Life-cycles
     // happens as a separate pass so that all effects in the entire tree have
     // already been invoked.
-    tryCommitAllLifeCycles(finishedWork);
+    effectfulFiber = finishedWork.firstEffect;
+    while (effectfulFiber) {
+      if (effectfulFiber.effectTag === Update ||
+          effectfulFiber.effectTag === PlacementAndUpdate) {
+        const current = effectfulFiber.alternate;
+        commitLifeCycles(current, effectfulFiber);
+      }
+      const next = effectfulFiber.nextEffect;
+      // Ensure that we clean these up so that we don't accidentally keep them.
+      // I'm not actually sure this matters because we can't reset firstEffect
+      // and lastEffect since they're on every node, not just the effectful
+      // ones. So we have to clean everything as we reuse nodes anyway.
+      effectfulFiber.nextEffect = null;
+      // Ensure that we reset the effectTag here so that we can rely on effect
+      // tags to reason about the current life-cycle.
+      effectfulFiber = next;
+    }
 
     // Finally if the root itself had an effect, we perform that since it is not
     // part of the effect list.
@@ -337,6 +360,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         ReactFiberInstrumentation.debugTool.onDidCompleteWork(workInProgress);
       }
     }
+
+    ReactCurrentOwner.current = null;
 
     return next;
   }
