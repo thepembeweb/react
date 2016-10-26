@@ -179,37 +179,65 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       // but won't end up in the tree because of the error.
       const failedFiber = effectfulFiber;
       if (failedFiber) {
+        console.log('will revert')
         revertLifeCyclesCommittedSoFar(finishedWork, failedFiber);
+        console.log('did revert')
       }
       throw err;
     }
   }
 
-  function revertLifeCyclesCommittedSoFar(finishedWork : Fiber, failedEffect : Fiber) {
-    // Gather effects in an array because this is a rare code path.
-    // We need to call them in the reverse order.
-    const fibersCommittedSoFar = [];
-
-    // Collect all the effects we have committed so far.
-    let committedFiber = finishedWork.firstEffect;
-    while (committedFiber && committedFiber !== failedEffect.nextEffect) {
-      if (committedFiber.effectTag === Update ||
-          committedFiber.effectTag === PlacementAndUpdate) {
-        fibersCommittedSoFar.push(committedFiber);
-      }
-      committedFiber = committedFiber.nextEffect;
+  function logEffects(fiber) {
+    let node = fiber;
+    let buffer = [];
+    while (node) {
+      buffer.push(node);
+      node = node.nextEffect;
     }
+    return buffer.map(f => f.counter + '(' + f.effectTag + ')').join(' -> ');
+  }
 
-    // Safely try to apply the opposite hooks in the opposite order.
-    fibersCommittedSoFar.reverse();
-    fibersCommittedSoFar.forEach(fiber => {
-      const current = fiber.alternate;
-      // Any errors thrown in componentWillUnmount() here
-      // will be ignored because we are already in the error
-      // recovery mode, and the underlying error will be
-      // passed to the error boundary or rethrown.
-      revertLifeCyclesSafely(current, fiber);
-    });
+  function revertLifeCyclesCommittedSoFar(finishedWork : Fiber, failedEffect : Fiber) {
+    // Reverse the effect list up, up to and including failedEffect.
+
+    console.log('before reversal. failed: ', failedEffect.counter, 'in', logEffects(finishedWork.firstEffect));
+
+    let node = finishedWork.firstEffect;
+    let previousNode = null;
+    let isCommittedSoFar = true;
+    while (node) {
+      if (isCommittedSoFar) {
+        node.effectTag = NoWork;
+        // if (node.effectTag === Update && !node.alternate) {
+        //   node.effectTag = Deletion;
+        // }
+      } else {
+        // Uncommitted: pretend nothing happened
+        node.effectTag = NoWork;
+      }
+
+      if (isCommittedSoFar && node === failedEffect) {
+        isCommittedSoFar = false;
+      }
+
+      const next = node.nextEffect;
+      node.nextEffect = previousNode;
+      previousNode = node;
+      node = next;
+    }
+    finishedWork.firstEffect = previousNode;
+
+    console.log('after reversal. failed: ', failedEffect.counter, 'in', logEffects(finishedWork.firstEffect));
+
+    // let effectfulFiber = previousNode;
+    // while (effectfulFiber) {
+    //   if (effectfulFiber.effectTag === Update ||
+    //       effectfulFiber.effectTag === PlacementAndUpdate) {
+    //     const current = effectfulFiber.alternate;
+    //     revertLifeCyclesSafely(current, effectfulFiber);
+    //   }
+    //   effectfulFiber = effectfulFiber.nextEffect;
+    // }
   }
 
   function resetWorkPriority(workInProgress : Fiber) {

@@ -12,7 +12,7 @@
 
 'use strict';
 
-export type TypeOfSideEffect = 0 | 1 | 2 | 3 | 4 | 5;
+export type TypeOfSideEffect = 0 | 1 | 2 | 3 | 4;
 
 module.exports = {
   NoEffect: 0,
@@ -20,5 +20,4 @@ module.exports = {
   Update: 2,
   PlacementAndUpdate: 3,
   Deletion: 4,
-  CompletedDeletion: 5,
 };

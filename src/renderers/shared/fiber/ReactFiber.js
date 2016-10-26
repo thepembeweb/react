@@ -39,6 +39,8 @@ var {
   NoEffect,
 } = require('ReactTypeOfSideEffect');
 
+var counter =0;
+
 // A Fiber is work on a Component that needs to be done or was done. There can
 // be more than one per component.
 export type Fiber = {
@@ -158,6 +160,8 @@ export type Fiber = {
 //    compatible.
 var createFiber = function(tag : TypeOfWork, key : null | string) : Fiber {
   return {
+
+    counter: counter++,
 
     // Instance
 
