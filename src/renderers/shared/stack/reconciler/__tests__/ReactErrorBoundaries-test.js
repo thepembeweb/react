@@ -705,10 +705,13 @@ describe('ReactErrorBoundaries', () => {
 
   if (ReactDOMFeatureFlags.useFiber) {
     // This test implements a new feature in Fiber.
-    fit('catches errors in componentDidMount', () => {
+    it('catches errors in componentDidMount', () => {
       var container = document.createElement('div');
       ReactDOM.render(
         <ErrorBoundary>
+          <BrokenComponentWillUnmount>
+            <Normal />
+          </BrokenComponentWillUnmount>
           <BrokenComponentDidMount />
           <Normal logName="LastChild" />
         </ErrorBoundary>,
@@ -798,7 +801,7 @@ describe('ReactErrorBoundaries', () => {
     });
   }
 
-  it('propagates errors on retry on mounting', () => {
+  fit('propagates errors on retry on mounting', () => {
     var container = document.createElement('div');
     ReactDOM.render(
       <ErrorBoundary>
@@ -1459,7 +1462,10 @@ describe('ReactErrorBoundaries', () => {
         'BrokenComponentDidUpdate componentWillReceiveProps',
         'BrokenComponentDidUpdate componentWillUpdate',
         'BrokenComponentDidUpdate render',
+        // All lifecycles run
         'BrokenComponentDidUpdate componentDidUpdate [!]',
+        'ErrorBoundary componentDidUpdate',
+        // Then, error is handled
         'ErrorBoundary unstable_handleError',
         'ErrorBoundary componentWillUpdate',
         'ErrorBoundary render error',

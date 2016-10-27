@@ -548,6 +548,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       }
       console.log('begin sync work')
       // Restart work from the root and try to re-render the errored tree.
+      const root : FiberRoot = (fiber.stateNode : any);
+      fiber = root.current.alternate;
       while (fiber) {
         fiber = performUnitOfWork(fiber, true);
       }
