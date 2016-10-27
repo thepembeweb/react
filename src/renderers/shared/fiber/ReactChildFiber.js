@@ -62,7 +62,6 @@ const {
 const {
   Placement,
   Deletion,
-  CompletedDeletion,
 } = ReactTypeOfSideEffect;
 
 function transferRef(current: ?Fiber, workInProgress: Fiber, element: ReactElement<any>) {
@@ -124,12 +123,6 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
           childToDelete;
     }
     childToDelete.nextEffect = null;
-    if (childToDelete.effectTag === CompletedDeletion) {
-      // Do not set the deletion effect if it has already completed.
-      // This happens when componentWillUnmount() fails, and we want to remember
-      // not to call it again as part of re-rendering an error boundary.
-      return;
-    }
     childToDelete.effectTag = Deletion;
   }
 

@@ -28,7 +28,6 @@ var { callCallbacks } = require('ReactFiberUpdateQueue');
 var {
   Placement,
   PlacementAndUpdate,
-  CompletedDeletion,
 } = require('ReactTypeOfSideEffect');
 
 module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
@@ -237,11 +236,6 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
   }
 
   function commitUnmount(current : Fiber, safely : boolean) : void {
-    // Make sure we mark this deletion as completed so that we don't
-    // attempt to perform it again if one of the deletions fails, and
-    // error boundary tries to unmount this subtree again.
-    current.effectTag = CompletedDeletion;
-
     switch (current.tag) {
       case ClassComponent: {
         detachRef(current);
