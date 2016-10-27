@@ -24,8 +24,13 @@ var {
   HostComponent,
   HostText,
 } = ReactTypeOfWork;
-var { findClosestErrorBoundary } = require('ReactFiberErrorBoundary');
+var { captureError, ReactTypeOfError } = require('ReactFiberErrorBoundary');
 var { callCallbacks } = require('ReactFiberUpdateQueue');
+
+var {
+  CommitWork,
+  CommitLifeCycles,
+} = ReactTypeOfError;
 
 var {
   Placement,
@@ -269,10 +274,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         if (typeof instance.componentWillUnmount === 'function') {
           const error = tryCallComponentWillUnmount(instance);
           if (error) {
-            return {
-              error,
-              boundary: findClosestErrorBoundary(current),
-            };
+            return captureError(current, error, CommitWork);
           }
         }
         return null;
@@ -284,15 +286,6 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       default: {
         return null;
       }
-    }
-  }
-
-  function tryCallComponentWillUnmount(instance) {
-    try {
-      instance.componentWillUnmount();
-      return null;
-    } catch (error) {
-      return error;
     }
   }
 
@@ -336,19 +329,20 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitLifeCycles(current : ?Fiber, finishedWork : Fiber) : void {
+  function commitLifeCycles(current : ?Fiber, finishedWork : Fiber) : CaughtError | null {
     switch (finishedWork.tag) {
       case ClassComponent: {
         const instance = finishedWork.stateNode;
+        let error = null;
         if (!current) {
           if (typeof instance.componentDidMount === 'function') {
-            instance.componentDidMount();
+            error = tryCallComponentDidMount(instance);
           }
         } else {
           if (typeof instance.componentDidUpdate === 'function') {
             const prevProps = current.memoizedProps;
             const prevState = current.memoizedState;
-            instance.componentDidUpdate(prevProps, prevState);
+            error = tryCallComponentDidUpdate(instance, prevProps, prevState);
           }
         }
         // Clear updates from current fiber. This must go before the callbacks
@@ -364,7 +358,10 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
           callCallbacks(callbackList, instance);
         }
         attachRef(current, finishedWork, instance);
-        return;
+        if (error) {
+          return captureError(finishedWork, error, CommitLifeCycles);
+        }
+        return null;
       }
       case HostContainer: {
         const instance = finishedWork.stateNode;
@@ -377,14 +374,41 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       case HostComponent: {
         const instance : I = finishedWork.stateNode;
         attachRef(current, finishedWork, instance);
-        return;
+        return null;
       }
       case HostText: {
         // We have no life-cycles associated with text.
-        return;
+        return null;
       }
       default:
         throw new Error('This unit of work tag should not have side-effects.');
+    }
+  }
+
+  function tryCallComponentDidMount(instance) {
+    try {
+      instance.componentDidMount();
+      return null;
+    } catch (error) {
+      return error;
+    }
+  }
+
+  function tryCallComponentDidUpdate(instance, prevProps, prevState) {
+    try {
+      instance.componentDidUpdate(prevProps, prevState);
+      return null;
+    } catch (error) {
+      return error;
+    }
+  }
+
+  function tryCallComponentWillUnmount(instance) {
+    try {
+      instance.componentWillUnmount();
+      return null;
+    } catch (error) {
+      return error;
     }
   }
 

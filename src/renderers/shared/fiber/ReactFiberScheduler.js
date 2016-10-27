@@ -23,7 +23,13 @@ var ReactFiberCommitWork = require('ReactFiberCommitWork');
 var ReactCurrentOwner = require('ReactCurrentOwner');
 
 var { cloneFiber } = require('ReactFiber');
-var { findClosestErrorBoundary, sendErrorToBoundary } = require('ReactFiberErrorBoundary');
+var { captureError, sendErrorToBoundary, ReactTypeOfError } = require('ReactFiberErrorBoundary');
+
+var {
+  BeginOrCompleteWork,
+  CommitWork,
+  CommitLifeCycles,
+} = ReactTypeOfError;
 
 var {
   NoWork,
@@ -111,6 +117,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     return null;
   }
 
+  var indent = '';
+
   function commitAllWork(finishedWork : Fiber, ignoreUnmountingErrors : boolean) {
     // Commit all the side-effects within a tree.
 
@@ -175,7 +183,14 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       if (effectfulFiber.effectTag === Update ||
           effectfulFiber.effectTag === PlacementAndUpdate) {
         const current = effectfulFiber.alternate;
-        commitLifeCycles(current, effectfulFiber);
+        const error = commitLifeCycles(current, effectfulFiber);
+        if (error) {
+          if (!caughtErrors) {
+            caughtErrors = [error];
+          } else {
+            caughtErrors.push(error);
+          }
+        }
       }
       const next = effectfulFiber.nextEffect;
       // Ensure that we clean these up so that we don't accidentally keep them.
@@ -193,17 +208,23 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     if (finishedWork.effectTag !== NoEffect) {
       const current = finishedWork.alternate;
       commitWork(current, finishedWork);
-      commitLifeCycles(current, finishedWork);
+      const error = commitLifeCycles(current, finishedWork);
+      if (error) {
+        if (!caughtErrors) {
+          caughtErrors = [error];
+        } else {
+          caughtErrors.push(error);
+        }
+      }
     }
 
     // Now that the tree has been committed, we can handle errors.
     if (caughtErrors) {
+      console.log('Caught some errors', caughtErrors.length)
       // TODO: handle multiple errors
-      if (caughtErrors[0].boundary) {
-        handleErrorInBoundary(caughtErrors[0].boundary, caughtErrors[0].error);
-      } else {
-        throw caughtErrors[0].error;
-      }
+      handleErrors(caughtErrors);
+    } else {
+      console.log('Did not catch any errors')
     }
   }
 
@@ -293,11 +314,14 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
           );
         }
         root.current = workInProgress;
+        console.log('swapped the pointer')
         // TODO: We can be smarter here and only look for more work in the
         // "next" scheduled work since we've already scanned passed. That
         // also ensures that work scheduled during reconciliation gets deferred.
         // const hasMoreWork = workInProgress.pendingWorkPriority !== NoWork;
+        console.log('will commit')
         commitAllWork(workInProgress, ignoreUnmountingErrors);
+        console.log('did commit')
         const nextWork = findNextUnitOfWork();
         // if (!nextWork && hasMoreWork) {
           // TODO: This can happen when some deep work completes and we don't
@@ -364,16 +388,17 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
   function performDeferredWork(deadline) {
     try {
       performDeferredWorkUnsafe(deadline);
-    } catch (error) {
+    } catch (err) {
       const failedUnitOfWork = nextUnitOfWork;
       // Reset because it points to the error boundary:
       nextUnitOfWork = null;
       if (failedUnitOfWork) {
-        handleError(failedUnitOfWork, error);
+        const error = captureError(failedUnitOfWork, err, BeginOrCompleteWork);
+        handleErrors([error]);
       } else {
         // We shouldn't end up here because nextUnitOfWork
         // should always be set while work is being performed.
-        throw error;
+        throw err;
       }
     }
   }
@@ -430,16 +455,17 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
   function performAnimationWork() {
     try {
       performAnimationWorkUnsafe();
-    } catch (error) {
+    } catch (err) {
       const failedUnitOfWork = nextUnitOfWork;
       // Reset because it points to the error boundary:
       nextUnitOfWork = null;
       if (failedUnitOfWork) {
-        handleError(failedUnitOfWork, error);
+        const error = captureError(failedUnitOfWork, err, BeginOrCompleteWork);
+        handleErrors([error]);
       } else {
         // We shouldn't end up here because nextUnitOfWork
         // should always be set while work is being performed.
-        throw error;
+        throw err;
       }
     }
   }
@@ -468,24 +494,42 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function handleError(failedUnitOfWork : Fiber, error : any) {
-    const errorBoundary = findClosestErrorBoundary(failedUnitOfWork);
-    if (errorBoundary) {
-      handleErrorInBoundary(errorBoundary, error);
-      return;
+  function handleErrors(errors) {
+    let { error, boundary, tag } = errors[0];
+    if (!boundary) {
+      throw error;
     }
-    throw error;
-  }
 
-  function handleErrorInBoundary(errorBoundary : Fiber, error : any) {
+    console.log(tag, error)
+    switch (tag) {
+      case CommitWork:
+        // Caught an error during deletion.
+        // Boundary is based on current.
+        //boundary = boundary.alternate;
+        break;
+      case CommitLifeCycles:
+        // Caught an error during lifecycles.
+        // Boundary was based on finished work which is now current.
+        //console.log('yeaaaa here')
+        //boundary = boundary.alternate;
+        console.log('Yo did not swap')
+        break;
+      case BeginOrCompleteWork:
+        // Boundary is the work in progress.
+        //  boundary = boundary.alternate || boundary;
+        break;
+    }
+
     try {
-      sendErrorToBoundary(errorBoundary, error);
+      console.log('sending error to boundary')
+      sendErrorToBoundary(boundary, error);
+      console.log('sent error to boundary')
       // We will process an update caused by an error boundary with synchronous priority.
       // This leaves us free to not keep track of whether a boundary has errored.
       // If it errors again, we will just catch the error and synchronously propagate it higher.
 
       // First, traverse upwards and set pending synchronous priority on the whole tree.
-      let fiber = errorBoundary;
+      let fiber = boundary;
       while (fiber) {
         fiber.pendingWorkPriority = SynchronousPriority;
         if (fiber.alternate) {
@@ -502,13 +546,18 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         }
         fiber = fiber.return;
       }
+      console.log('begin sync work')
       // Restart work from the root and try to re-render the errored tree.
       while (fiber) {
         fiber = performUnitOfWork(fiber, true);
       }
+      console.log('end sync work')
     } catch (nextError) {
+      // TODO
+      throw nextError;
+      //console.log('caught another error', nextError)
       // Propagate error to the next boundary or rethrow.
-      handleError(errorBoundary, nextError);
+      //handleError(workInProgressBoundary, nextError);//
     }
   }
 

@@ -705,15 +705,12 @@ describe('ReactErrorBoundaries', () => {
 
   if (ReactDOMFeatureFlags.useFiber) {
     // This test implements a new feature in Fiber.
-    xit('catches errors in componentDidMount', () => {
+    fit('catches errors in componentDidMount', () => {
       var container = document.createElement('div');
       ReactDOM.render(
         <ErrorBoundary>
-          <BrokenComponentWillUnmount>
-            <Normal />
-          </BrokenComponentWillUnmount>
           <BrokenComponentDidMount />
-          <Normal logName="NeverFullyMounted" />
+          <Normal logName="LastChild" />
         </ErrorBoundary>,
         container
       );
@@ -730,25 +727,28 @@ describe('ReactErrorBoundaries', () => {
         'BrokenComponentDidMount constructor',
         'BrokenComponentDidMount componentWillMount',
         'BrokenComponentDidMount render',
-        'NeverFullyMounted constructor',
-        'NeverFullyMounted componentWillMount',
-        'NeverFullyMounted render',
+        'LastChild constructor',
+        'LastChild componentWillMount',
+        'LastChild render',
         // Start flushing didMount queue
         'Normal componentDidMount',
         'BrokenComponentWillUnmount componentDidMount',
         'BrokenComponentDidMount componentDidMount [!]',
-        // Call willUnmount for every didMount so far
-        'BrokenComponentDidMount componentWillUnmount',
-        // Parents get willUnmount first
+        // Continue despite the error
+        'LastChild componentDidMount',
+        'ErrorBoundary componentDidMount',
+        // Now we are ready to handle the error
+        'ErrorBoundary unstable_handleError',
+        'ErrorBoundary componentWillUpdate',
+        'ErrorBoundary render error',
+        // Safely unmount every child
         'BrokenComponentWillUnmount componentWillUnmount [!]',
         // Continue unmounting safely despite any errors
         'Normal componentWillUnmount',
-        // We didn't need to call willUnmount for NeverFullyMounted.
-        'ErrorBoundary unstable_handleError',
-        'ErrorBoundary constructor',
-        'ErrorBoundary componentWillMount',
-        'ErrorBoundary render error',
-        'ErrorBoundary componentDidMount',
+        'BrokenComponentDidMount componentWillUnmount',
+        'LastChild componentWillUnmount',
+        // The update has finished
+        'ErrorBoundary componentDidUpdate',
       ]);
 
       log.length = 0;
