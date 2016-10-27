@@ -155,7 +155,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitNestedUnmounts(root : Fiber, safely : boolean) {
+  function commitNestedUnmounts(root : Fiber) {
     // While we're inside a removed host node we don't want to call
     // removeChild on the inner nodes because they're removed by the top
     // call anyway. We also want to call componentWillUnmount on all
@@ -163,7 +163,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     // we do an inner loop while we're still inside the host node.
     let node : Fiber = root;
     while (true) {
-      commitUnmount(node, safely);
+      commitUnmount(node);
       if (node.child) {
         // TODO: Coroutines need to visit the stateNode.
         node = node.child;
@@ -182,20 +182,20 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function unmountHostComponents(parent, current, safely) {
+  function unmountHostComponents(parent, current) {
     // We only have the top Fiber that was inserted but we need recurse down its
     // children to find all the terminal nodes.
     let node : Fiber = current;
     while (true) {
       if (node.tag === HostComponent || node.tag === HostText) {
-        commitNestedUnmounts(node, safely);
+        commitNestedUnmounts(node);
         // After all the children have unmounted, it is now safe to remove the
         // node from the tree.
         if (parent) {
           removeChild(parent, node.stateNode);
         }
       } else {
-        commitUnmount(node, safely);
+        commitUnmount(node);
         if (node.child) {
           // TODO: Coroutines need to visit the stateNode.
           node = node.child;
@@ -215,12 +215,12 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitDeletion(current : Fiber, safely : boolean) : void {
+  function commitDeletion(current : Fiber) : void {
     // Recursively delete all host nodes from the parent.
     // TODO: Error handling.
     const parent = getHostParent(current);
 
-    unmountHostComponents(parent, current, safely);
+    unmountHostComponents(parent, current);
 
     // Cut off the return pointers to disconnect it from the tree. Ideally, we
     // should clear the child pointer of the parent alternate to let this
@@ -235,17 +235,13 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitUnmount(current : Fiber, safely : boolean) : void {
+  function commitUnmount(current : Fiber) : void {
     switch (current.tag) {
       case ClassComponent: {
         detachRef(current);
         const instance = current.stateNode;
         if (typeof instance.componentWillUnmount === 'function') {
-          if (safely) {
-            callComponentWillUnmountAndIgnoreErrors(instance);
-          } else {
-            instance.componentWillUnmount();
-          }
+          instance.componentWillUnmount();
         }
         return;
       }
