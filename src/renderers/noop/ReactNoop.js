@@ -41,7 +41,10 @@ type TextInstance = { tag: 98, text: string };
 
 var instanceCounter = 0;
 
-function recursivelyAppendChildren(flatArray : Array<Instance | TextInstance>, child : HostChildren<Instance | TextInstance>) {
+function recursivelyAppendChildren(
+  flatArray : Array<Instance | TextInstance>,
+  child : HostChildren<Instance | TextInstance>
+) {
   if (!child) {
     return;
   }
@@ -108,7 +111,11 @@ var NoopRenderer = ReactFiberReconciler({
     parentInstance.children.push(child);
   },
 
-  insertBefore(parentInstance : Instance, child : Instance | TextInstance, beforeChild : Instance | TextInstance) : void {
+  insertBefore(
+    parentInstance : Instance,
+    child : Instance | TextInstance,
+    beforeChild : Instance | TextInstance
+  ) : void {
     const index = parentInstance.children.indexOf(child);
     if (index !== -1) {
       parentInstance.children.splice(index, 1);
@@ -146,11 +153,11 @@ var ReactNoop = {
 
   root: rootContainer,
 
-  render(element : ReactElement<any>) {
+  render(element : ReactElement<any>, callback: ?Function) {
     if (!root) {
-      root = NoopRenderer.mountContainer(element, rootContainer);
+      root = NoopRenderer.mountContainer(element, rootContainer, callback);
     } else {
-      NoopRenderer.updateContainer(element, root);
+      NoopRenderer.updateContainer(element, root, callback);
     }
   },
 
