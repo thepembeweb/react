@@ -1514,7 +1514,7 @@ describe('ReactErrorBoundaries', () => {
     });
   }
 
-  fit('recovers from componentWillUnmount errors on update', () => {
+  it('recovers from componentWillUnmount errors on update', () => {
     var container = document.createElement('div');
     ReactDOM.render(
       <ErrorBoundary>
@@ -1545,10 +1545,11 @@ describe('ReactErrorBoundaries', () => {
       'BrokenComponentWillUnmount componentWillUnmount [!]',
       ...(ReactDOMFeatureFlags.useFiber ? [
         // Fiber proceeds with lifecycles despite errors
-        'BrokenComponentWillUnmount componentWillUnmount [!]',
         'Normal componentWillUnmount',
+        // The components have updated in this phase
+        'BrokenComponentWillUnmount componentDidUpdate',
         'ErrorBoundary componentDidUpdate',
-        // After the lifecycles, Fiber is ready to handle error
+        // Now that commit phase is done, Fiber handles errors
         'ErrorBoundary unstable_handleError',
         // The initial render was aborted, so
         // Fiber retries from the root.
@@ -1614,24 +1615,33 @@ describe('ReactErrorBoundaries', () => {
       'BrokenComponentWillUnmount render',
       // Unmounting throws:
       'BrokenComponentWillUnmount componentWillUnmount [!]',
-      'ErrorBoundary unstable_handleError',
       ...(ReactDOMFeatureFlags.useFiber ? [
+        // Fiber proceeds with lifecycles despite errors
+        'BrokenComponentWillUnmount componentDidUpdate',
+        'Normal componentDidUpdate',
+        'ErrorBoundary componentDidUpdate',
+        // Now that commit phase is done, Fiber handles errors
+        'ErrorBoundary unstable_handleError',
         // The initial render was aborted, so
         // Fiber retries from the root.
         'ErrorBoundary componentWillUpdate',
-        // Fiber renders first, calls lifecycles later.
+        // Render an error now (stack will do it later)
         'ErrorBoundary render error',
-        // Attempt to unmount previous children:
+        // Attempt to unmount previous child:
         'Normal componentWillUnmount',
         'BrokenComponentWillUnmount componentWillUnmount [!]',
+        // Done
+        'ErrorBoundary componentDidUpdate',
       ] : [
+         // TODO
+        'ErrorBoundary unstable_handleError',
         // Attempt to unmount previous children:
         'Normal componentWillUnmount',
         'BrokenComponentWillUnmount componentWillUnmount [!]',
         // Stack calls lifecycles first, then renders.
         'ErrorBoundary render error',
+        'ErrorBoundary componentDidUpdate',
       ]),
-      'ErrorBoundary componentDidUpdate',
     ]);
 
     log.length = 0;

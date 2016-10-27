@@ -12,6 +12,7 @@
 
 'use strict';
 
+import type { CaughtError } from 'ReactFiberErrorBoundary';
 import type { Fiber } from 'ReactFiber';
 import type { FiberRoot } from 'ReactFiberRoot';
 import type { HostConfig } from 'ReactFiberReconciler';
@@ -23,6 +24,7 @@ var {
   HostComponent,
   HostText,
 } = ReactTypeOfWork;
+var { findClosestErrorBoundary } = require('ReactFiberErrorBoundary');
 var { callCallbacks } = require('ReactFiberUpdateQueue');
 
 var {
@@ -155,7 +157,10 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function commitNestedUnmounts(root : Fiber) {
+  function commitNestedUnmounts(root : Fiber): Array<CaughtError> | null {
+    // Since errors are rare, we allocate this array on demand.
+    let caughtErrors = null;
+
     // While we're inside a removed host node we don't want to call
     // removeChild on the inner nodes because they're removed by the top
     // call anyway. We also want to call componentWillUnmount on all
@@ -163,39 +168,58 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     // we do an inner loop while we're still inside the host node.
     let node : Fiber = root;
     while (true) {
-      commitUnmount(node);
+      const error = commitUnmount(node);
+      if (error) {
+        caughtErrors = caughtErrors || [];
+        caughtErrors.push(error);
+      }
       if (node.child) {
         // TODO: Coroutines need to visit the stateNode.
         node = node.child;
         continue;
       }
       if (node === root) {
-        return;
+        return caughtErrors;
       }
       while (!node.sibling) {
         if (!node.return || node.return === root) {
-          return;
+          return caughtErrors;
         }
         node = node.return;
       }
       node = node.sibling;
     }
+    return caughtErrors;
   }
 
-  function unmountHostComponents(parent, current) {
+  function unmountHostComponents(parent, current): Array<CaughtError> | null {
+    // Since errors are rare, we allocate this array on demand.
+    let caughtErrors = null;
+
     // We only have the top Fiber that was inserted but we need recurse down its
     // children to find all the terminal nodes.
     let node : Fiber = current;
     while (true) {
       if (node.tag === HostComponent || node.tag === HostText) {
-        commitNestedUnmounts(node);
+        const errors = commitNestedUnmounts(node);
+        if (errors) {
+          if (!caughtErrors) {
+            caughtErrors = errors;
+          } else {
+            caughtErrors.push.apply(caughtErrors, errors);
+          }
+        }
         // After all the children have unmounted, it is now safe to remove the
         // node from the tree.
         if (parent) {
           removeChild(parent, node.stateNode);
         }
       } else {
-        commitUnmount(node);
+        const error = commitUnmount(node);
+        if (error) {
+          caughtErrors = caughtErrors || [];
+          caughtErrors.push(error);
+        }
         if (node.child) {
           // TODO: Coroutines need to visit the stateNode.
           node = node.child;
@@ -203,24 +227,24 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         }
       }
       if (node === current) {
-        return;
+        return caughtErrors;
       }
       while (!node.sibling) {
         if (!node.return || node.return === current) {
-          return;
+          return caughtErrors;
         }
         node = node.return;
       }
       node = node.sibling;
     }
+    return caughtErrors;
   }
 
-  function commitDeletion(current : Fiber) : void {
+  function commitDeletion(current : Fiber) : Array<CaughtError> | null {
     // Recursively delete all host nodes from the parent.
-    // TODO: Error handling.
     const parent = getHostParent(current);
-
-    unmountHostComponents(parent, current);
+    // Detach refs and call componentWillUnmount() on the whole subtree.
+    const caughtErrors = unmountHostComponents(parent, current);
 
     // Cut off the return pointers to disconnect it from the tree. Ideally, we
     // should clear the child pointer of the parent alternate to let this
@@ -233,31 +257,42 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       current.alternate.child = null;
       current.alternate.return = null;
     }
+
+    return caughtErrors;
   }
 
-  function commitUnmount(current : Fiber) : void {
+  function commitUnmount(current : Fiber) : CaughtError | null {
     switch (current.tag) {
       case ClassComponent: {
         detachRef(current);
         const instance = current.stateNode;
         if (typeof instance.componentWillUnmount === 'function') {
-          instance.componentWillUnmount();
+          const error = tryCallComponentWillUnmount(instance);
+          if (error) {
+            return {
+              error,
+              boundary: findClosestErrorBoundary(current),
+            };
+          }
         }
-        return;
+        return null;
       }
       case HostComponent: {
         detachRef(current);
-        return;
+        return null;
+      }
+      default: {
+        return null;
       }
     }
   }
 
-  function callComponentWillUnmountAndIgnoreErrors(instance) {
+  function tryCallComponentWillUnmount(instance) {
     try {
       instance.componentWillUnmount();
+      return null;
     } catch (error) {
-      // Ignore any errors because we are already cleaning up
-      // due to another error that is being handled by a boundary.
+      return error;
     }
   }
 

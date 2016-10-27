@@ -23,6 +23,7 @@ var ReactFiberCommitWork = require('ReactFiberCommitWork');
 var ReactCurrentOwner = require('ReactCurrentOwner');
 
 var { cloneFiber } = require('ReactFiber');
+var { findClosestErrorBoundary, sendErrorToBoundary } = require('ReactFiberErrorBoundary');
 
 var {
   NoWork,
@@ -110,8 +111,14 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     return null;
   }
 
-  function commitAllWork(finishedWork : Fiber) {
+  function commitAllWork(finishedWork : Fiber, ignoreUnmountingErrors : boolean) {
     // Commit all the side-effects within a tree.
+
+    // Commit phase is meant to be atomic and non-interruptible.
+    // Any errors raised in it should be handled after it is over
+    // so that we don't end up in an inconsistent state due to user code.
+    // We'll keep track of all caught errors and handle them later.
+    let caughtErrors = null;
 
     // First, we'll perform all the host insertions, updates, deletions and
     // ref unmounts.
@@ -140,7 +147,20 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
           break;
         }
         case Deletion: {
-          commitDeletion(effectfulFiber);
+          // Deletion might cause an error in componentWillUnmount().
+          // We will continue nevertheless and handle those later on.
+          const errors = commitDeletion(effectfulFiber);
+          // There is a special case where we completely ignore errors.
+          // It happens when we already caught an error earlier, and the update
+          // is caused by an error boundary trying to render an error message.
+          // In this case, we want to blow away the tree without catching errors.
+          if (errors && !ignoreUnmountingErrors) {
+            if (!caughtErrors) {
+              caughtErrors = errors;
+            } else {
+              caughtErrors.push.apply(caughtErrors, errors);
+            }
+          }
           break;
         }
       }
@@ -175,6 +195,16 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       commitWork(current, finishedWork);
       commitLifeCycles(current, finishedWork);
     }
+
+    // Now that the tree has been committed, we can handle errors.
+    if (caughtErrors) {
+      // TODO: handle multiple errors
+      if (caughtErrors[0].boundary) {
+        handleErrorInBoundary(caughtErrors[0].boundary, caughtErrors[0].error);
+      } else {
+        throw caughtErrors[0].error;
+      }
+    }
   }
 
   function resetWorkPriority(workInProgress : Fiber) {
@@ -195,7 +225,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     workInProgress.pendingWorkPriority = newPriority;
   }
 
-  function completeUnitOfWork(workInProgress : Fiber) : ?Fiber {
+  function completeUnitOfWork(workInProgress : Fiber, ignoreUnmountingErrors : boolean) : ?Fiber {
     while (true) {
       // The current, flushed, state of this fiber is the alternate.
       // Ideally nothing should rely on this, but relying on it here
@@ -262,14 +292,12 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
             'related to the return field.'
           );
         }
+        root.current = workInProgress;
         // TODO: We can be smarter here and only look for more work in the
         // "next" scheduled work since we've already scanned passed. That
         // also ensures that work scheduled during reconciliation gets deferred.
         // const hasMoreWork = workInProgress.pendingWorkPriority !== NoWork;
-        commitAllWork(workInProgress);
-        // Swap the pointer after committing all work so that if committing fails,
-        // we still treat it as a work in progress in case there is an error boundary.
-        root.current = workInProgress;
+        commitAllWork(workInProgress, ignoreUnmountingErrors);
         const nextWork = findNextUnitOfWork();
         // if (!nextWork && hasMoreWork) {
           // TODO: This can happen when some deep work completes and we don't
@@ -283,7 +311,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function performUnitOfWork(workInProgress : Fiber) : ?Fiber {
+  function performUnitOfWork(workInProgress : Fiber, ignoreUnmountingErrors : boolean) : ?Fiber {
     // The current, flushed, state of this fiber is the alternate.
     // Ideally nothing should rely on this, but relying on it here
     // means that we don't need an additional field on the work in
@@ -304,7 +332,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         ReactFiberInstrumentation.debugTool.onWillCompleteWork(workInProgress);
       }
       // If this doesn't spawn new work, complete the current work.
-      next = completeUnitOfWork(workInProgress);
+      next = completeUnitOfWork(workInProgress, ignoreUnmountingErrors);
       if (__DEV__ && ReactFiberInstrumentation.debugTool) {
         ReactFiberInstrumentation.debugTool.onDidCompleteWork(workInProgress);
       }
@@ -321,7 +349,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
     while (nextUnitOfWork) {
       if (deadline.timeRemaining() > timeHeuristicForUnitOfWork) {
-        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+        nextUnitOfWork = performUnitOfWork(nextUnitOfWork, false);
         if (!nextUnitOfWork) {
           // Find more work. We might have time to complete some more.
           nextUnitOfWork = findNextUnitOfWork();
@@ -386,7 +414,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     nextUnitOfWork = findNextUnitOfWork();
     while (nextUnitOfWork &&
            nextPriorityLevel !== NoWork) {
-      nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+      nextUnitOfWork = performUnitOfWork(nextUnitOfWork, false);
       if (!nextUnitOfWork) {
         // Keep searching for animation work until there's no more left
         nextUnitOfWork = findNextUnitOfWork();
@@ -440,20 +468,6 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     }
   }
 
-  function findClosestErrorBoundary(fiber : Fiber): ?Fiber {
-    let maybeErrorBoundary = fiber.return;
-    while (maybeErrorBoundary) {
-      if (maybeErrorBoundary.tag === ClassComponent) {
-        const instance = maybeErrorBoundary.stateNode;
-        if (typeof instance.unstable_handleError === 'function') {
-          return maybeErrorBoundary;
-        }
-      }
-      maybeErrorBoundary = maybeErrorBoundary.return;
-    }
-    return null;
-  }
-
   function handleError(failedUnitOfWork : Fiber, error : any) {
     const errorBoundary = findClosestErrorBoundary(failedUnitOfWork);
     if (errorBoundary) {
@@ -465,10 +479,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
 
   function handleErrorInBoundary(errorBoundary : Fiber, error : any) {
     try {
-      // Error boundary implementations would usually call setState() here:
-      const instance = errorBoundary.stateNode;
-      instance.unstable_handleError(error);
-
+      sendErrorToBoundary(errorBoundary, error);
       // We will process an update caused by an error boundary with synchronous priority.
       // This leaves us free to not keep track of whether a boundary has errored.
       // If it errors again, we will just catch the error and synchronously propagate it higher.
@@ -493,7 +504,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       }
       // Restart work from the root and try to re-render the errored tree.
       while (fiber) {
-        fiber = performUnitOfWork(fiber);
+        fiber = performUnitOfWork(fiber, true);
       }
     } catch (nextError) {
       // Propagate error to the next boundary or rethrow.
