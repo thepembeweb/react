@@ -56,7 +56,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
 
   const { beginWork } = ReactFiberBeginWork(config, scheduleUpdate);
   const { completeWork } = ReactFiberCompleteWork(config);
-  const { commitInsertion, commitDeletion, commitWork, commitLifeCycles, revertLifeCyclesSafely } =
+  const { commitInsertion, commitDeletion, commitWork, commitLifeCycles } =
     ReactFiberCommitWork(config);
 
   const scheduleAnimationCallback = config.scheduleAnimationCallback;
@@ -151,7 +151,23 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     // Next, we'll perform all life-cycles and ref callbacks. Life-cycles
     // happens as a separate pass so that all effects in the entire tree have
     // already been invoked.
-    tryCommitAllLifeCycles(finishedWork);
+    effectfulFiber = finishedWork.firstEffect;
+    while (effectfulFiber) {
+      if (effectfulFiber.effectTag === Update ||
+          effectfulFiber.effectTag === PlacementAndUpdate) {
+        const current = effectfulFiber.alternate;
+        commitLifeCycles(current, effectfulFiber);
+      }
+      const next = effectfulFiber.nextEffect;
+      // Ensure that we clean these up so that we don't accidentally keep them.
+      // I'm not actually sure this matters because we can't reset firstEffect
+      // and lastEffect since they're on every node, not just the effectful
+      // ones. So we have to clean everything as we reuse nodes anyway.
+      effectfulFiber.nextEffect = null;
+      // Ensure that we reset the effectTag here so that we can rely on effect
+      // tags to reason about the current life-cycle.
+      effectfulFiber = next;
+    }
 
     // Finally if the root itself had an effect, we perform that since it is not
     // part of the effect list.
@@ -160,57 +176,6 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       commitWork(current, finishedWork);
       commitLifeCycles(current, finishedWork);
     }
-  }
-
-  function tryCommitAllLifeCycles(finishedWork : Fiber) {
-    let effectfulFiber = finishedWork.firstEffect;
-    try {
-      while (effectfulFiber) {
-        if (effectfulFiber.effectTag === Update ||
-            effectfulFiber.effectTag === PlacementAndUpdate) {
-          const current = effectfulFiber.alternate;
-          commitLifeCycles(current, effectfulFiber);
-        }
-        const next = effectfulFiber.nextEffect;
-        effectfulFiber = next;
-      }
-    } catch (err) {
-      // Slow path: we want to issue a componentWillUnmount()
-      // for any component that received a componentDidMount()
-      // but won't end up in the tree because of the error.
-      const failedFiber = effectfulFiber;
-      if (failedFiber) {
-        revertLifeCyclesCommittedSoFar(finishedWork, failedFiber);
-      }
-      throw err;
-    }
-  }
-
-  function revertLifeCyclesCommittedSoFar(finishedWork : Fiber, failedEffect : Fiber) {
-    // Gather effects in an array because this is a rare code path.
-    // We need to call them in the reverse order.
-    const fibersCommittedSoFar = [];
-
-    // Collect all the effects we have committed so far.
-    let committedFiber = finishedWork.firstEffect;
-    while (committedFiber && committedFiber !== failedEffect.nextEffect) {
-      if (committedFiber.effectTag === Update ||
-          committedFiber.effectTag === PlacementAndUpdate) {
-        fibersCommittedSoFar.push(committedFiber);
-      }
-      committedFiber = committedFiber.nextEffect;
-    }
-
-    // Safely try to apply the opposite hooks in the opposite order.
-    fibersCommittedSoFar.reverse();
-    fibersCommittedSoFar.forEach(fiber => {
-      const current = fiber.alternate;
-      // Any errors thrown in componentWillUnmount() here
-      // will be ignored because we are already in the error
-      // recovery mode, and the underlying error will be
-      // passed to the error boundary or rethrown.
-      revertLifeCyclesSafely(current, fiber);
-    });
   }
 
   function resetWorkPriority(workInProgress : Fiber) {
