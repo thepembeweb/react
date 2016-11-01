@@ -153,4 +153,35 @@ describe('ReactIncrementalScheduling', () => {
     expect(ReactNoop.getChildren('b')).toEqual([span('b:3')]);
     expect(ReactNoop.getChildren('c')).toEqual([span('c:3')]);
   });
+
+  it('does not handle lo-pri roots before flushing hi-pri roots', () => {
+    ReactNoop.renderToRootWithID(<span prop="a:1" />, 'a');
+    ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
+    ReactNoop.renderToRootWithID(<span prop="c:1" />, 'c');
+    ReactNoop.flush();
+    expect(ReactNoop.getChildren('a')).toEqual([span('a:1')]);
+    expect(ReactNoop.getChildren('b')).toEqual([span('b:1')]);
+    expect(ReactNoop.getChildren('c')).toEqual([span('c:1')]);
+
+    // Schedule lo-pri work first
+    ReactNoop.renderToRootWithID(<span prop="a:2" />, 'a');
+    // Then schedule hi-pri work
+    ReactNoop.performAnimationWork(() => {
+      ReactNoop.renderToRootWithID(<span prop="b:2" />, 'b');
+      ReactNoop.renderToRootWithID(<span prop="c:2" />, 'c');
+    });
+
+    // Flush hi-pri work
+    // This shouldn't flush lo-pri work
+    ReactNoop.flushAnimationPri();
+    expect(ReactNoop.getChildren('a')).toEqual([span('a:1')]);
+    expect(ReactNoop.getChildren('b')).toEqual([span('b:2')]);
+    expect(ReactNoop.getChildren('c')).toEqual([span('c:2')]);
+
+    // Flush lo-pri work
+    ReactNoop.flushDeferredPri();
+    expect(ReactNoop.getChildren('a')).toEqual([span('a:2')]);
+    expect(ReactNoop.getChildren('b')).toEqual([span('b:2')]);
+    expect(ReactNoop.getChildren('c')).toEqual([span('c:2')]);
+  });
 });
