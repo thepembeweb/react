@@ -452,7 +452,7 @@ describe('ReactIncrementalScheduling', () => {
 
   it('performs animation work in animation callback', () => {
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Animation work that will get performed during animation callback
         ReactNoop.performAnimationWork(() => {
           ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
@@ -462,6 +462,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule animation work
     ReactNoop.performAnimationWork(() => {
@@ -476,7 +479,7 @@ describe('ReactIncrementalScheduling', () => {
 
   it('schedules deferred work in animation callback', () => {
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Deferred work that will get scheduled during animation callback
         ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
       }
@@ -484,6 +487,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule animation work
     ReactNoop.performAnimationWork(() => {
@@ -504,7 +510,7 @@ describe('ReactIncrementalScheduling', () => {
   it('schedules deferred work and performs animation work in animation callback', () => {
     let hasScheduled = false;
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Deferred work that will get scheduled during animation callback
         ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
         // Animation work that will get performed during animation callback
@@ -519,6 +525,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule animation work
     ReactNoop.performAnimationWork(() => {
@@ -544,7 +553,7 @@ describe('ReactIncrementalScheduling', () => {
   it('performs animation work and schedules deferred work in animation callback', () => {
     let hasScheduled = false;
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Animation work that will get performed during animation callback
         ReactNoop.performAnimationWork(() => {
           ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
@@ -561,6 +570,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule animation work
     ReactNoop.performAnimationWork(() => {
@@ -585,7 +597,7 @@ describe('ReactIncrementalScheduling', () => {
 
   it('performs deferred work in deferred callback if it has time', () => {
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Deferred work that will get performed during deferred callback
         ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
       }
@@ -593,6 +605,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
@@ -606,7 +621,7 @@ describe('ReactIncrementalScheduling', () => {
   it('schedules deferred work in deferred callback if it runs out of time', () => {
     let hasScheduled = false;
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Deferred work that will get scheduled during deferred callback
         ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
         hasScheduled = true;
@@ -615,6 +630,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
@@ -633,7 +651,7 @@ describe('ReactIncrementalScheduling', () => {
 
   it('performs animated work in deferred callback if it has time', () => {
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Animated work that will get performed during deferred callback
         ReactNoop.performAnimationWork(() => {
           ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
@@ -643,6 +661,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
@@ -655,7 +676,7 @@ describe('ReactIncrementalScheduling', () => {
 
   it('performs animated work and deferred work in deferred callback if it has time', () => {
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Deferred work that will get performed during deferred callback
         ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
         // Animation work that will get performed during deferred callback
@@ -669,6 +690,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
@@ -683,7 +707,7 @@ describe('ReactIncrementalScheduling', () => {
 
   it('performs deferred and animated work work in deferred callback if it has time', () => {
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Animation work that will get performed during deferred callback
         ReactNoop.performAnimationWork(() => {
           ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
@@ -699,6 +723,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
@@ -714,7 +741,7 @@ describe('ReactIncrementalScheduling', () => {
   it('schedules animated work in deferred callback if it runs out of time', () => {
     let hasScheduled = false;
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Animated work that will get scheduled during deferred callback
         ReactNoop.performAnimationWork(() => {
           ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
@@ -725,6 +752,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
@@ -744,7 +774,7 @@ describe('ReactIncrementalScheduling', () => {
   it('schedules animated work and deferred work in deferred callback if it runs out of time', () => {
     let isScheduled = false;
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Deferred work that will get performed during deferred callback
         ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
         // Animation work that will get performed during deferred callback
@@ -759,6 +789,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
@@ -782,7 +815,7 @@ describe('ReactIncrementalScheduling', () => {
   it('schedules deferred work and animated work in deferred callback if it runs out of time', () => {
     let isScheduled = false;
     class Foo extends React.Component {
-      componentDidMount() {
+      componentWillUpdate() {
         // Animation work that will get performed during deferred callback
         ReactNoop.performAnimationWork(() => {
           ReactNoop.renderToRootWithID(<span prop="b:1" />, 'b');
@@ -799,6 +832,9 @@ describe('ReactIncrementalScheduling', () => {
         return <span prop="a:1" />;
       }
     }
+    // Prepare the initial tree so that the update would happen in a callback
+    ReactNoop.renderToRootWithID(<Foo />, 'a');
+    ReactNoop.flush();
 
     // Schedule deferred work
     ReactNoop.renderToRootWithID(<Foo />, 'a');
