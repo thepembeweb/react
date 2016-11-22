@@ -14,7 +14,6 @@
 
 import type { ReactCoroutine } from 'ReactCoroutine';
 import type { Fiber } from 'ReactFiber';
-import type { FiberRoot } from 'ReactFiberRoot';
 import type { HostConfig } from 'ReactFiberReconciler';
 import type { ReifiedYield } from 'ReactReifiedYield';
 
@@ -159,14 +158,8 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
           markCallback(workInProgress);
         }
         return null;
-      case HostContainer: {
+      case HostContainer:
         transferOutput(workInProgress.child, workInProgress);
-        popContextProvider();
-        const fiberRoot = (workInProgress.stateNode : FiberRoot);
-        if (fiberRoot.pendingContext) {
-          fiberRoot.context = fiberRoot.pendingContext;
-          fiberRoot.pendingContext = null;
-        }
         // We don't know if a container has updated any children so we always
         // need to update it right now. We schedule this side-effect before
         // all the other side-effects in the subtree. We need to schedule it
@@ -174,7 +167,6 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         // are invoked.
         markUpdate(workInProgress);
         return null;
-      }
       case HostComponent:
         let newProps = workInProgress.pendingProps;
         if (current && workInProgress.stateNode != null) {

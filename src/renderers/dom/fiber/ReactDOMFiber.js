@@ -22,17 +22,10 @@ var ReactDOMFeatureFlags = require('ReactDOMFeatureFlags');
 var ReactDOMFiberComponent = require('ReactDOMFiberComponent');
 var ReactDOMInjection = require('ReactDOMInjection');
 var ReactFiberReconciler = require('ReactFiberReconciler');
-var ReactInstanceMap = require('ReactInstanceMap');
 var ReactPortal = require('ReactPortal');
 
 var findDOMNode = require('findDOMNode');
-var invariant = require('invariant');
 var warning = require('warning');
-
-ReactDOMInjection.inject();
-ReactControlledComponent.injection.injectFiberControlledHostComponent(
-  ReactDOMFiberComponent
-);
 
 var {
   createElement,
@@ -156,29 +149,18 @@ function warnAboutUnstableUse() {
   warned = true;
 }
 
-function renderSubtreeIntoContainer(parentComponent : ?ReactComponent<any, any, any>, element : ReactElement<any>, container : DOMContainerElement, callback: ?Function) {
-  let root;
-  if (!container._reactRootContainer) {
-    root = container._reactRootContainer = DOMRenderer.mountContainer(element, container, parentComponent, callback);
-  } else {
-    DOMRenderer.updateContainer(element, root = container._reactRootContainer, parentComponent, callback);
-  }
-  return DOMRenderer.getPublicRootInstance(root);
-}
-
 var ReactDOM = {
 
   render(element : ReactElement<any>, container : DOMContainerElement, callback: ?Function) {
     warnAboutUnstableUse();
-    return renderSubtreeIntoContainer(null, element, container, callback);
-  },
+    let root;
 
-  unstable_renderSubtreeIntoContainer(parentComponent : ReactComponent<any, any, any>, element : ReactElement<any>, container : DOMContainerElement, callback: ?Function) {
-    invariant(
-      parentComponent != null && ReactInstanceMap.has(parentComponent),
-      'parentComponent must be a valid React Component'
-    );
-    return renderSubtreeIntoContainer(parentComponent, element, container, callback);
+    if (!container._reactRootContainer) {
+      root = container._reactRootContainer = DOMRenderer.mountContainer(element, container, callback);
+    } else {
+      DOMRenderer.updateContainer(element, root = container._reactRootContainer, callback);
+    }
+    return DOMRenderer.getPublicRootInstance(root);
   },
 
   unmountComponentAtNode(container : DOMContainerElement) {

@@ -18,7 +18,6 @@ var emptyObject = require('emptyObject');
 var invariant = require('invariant');
 var {
   getComponentName,
-  isFiberMounted,
 } = require('ReactFiberTreeReflection');
 var {
   ClassComponent,
@@ -65,13 +64,12 @@ exports.hasContextChanged = function() : boolean {
   return index > -1 && didPerformWorkStack[index];
 };
 
-function isContextProvider(fiber : Fiber) : boolean {
+exports.isContextProvider = function(fiber : Fiber) : boolean {
   return (
     fiber.tag === ClassComponent &&
     typeof fiber.stateNode.getChildContext === 'function'
   );
-}
-exports.isContextProvider = isContextProvider;
+};
 
 exports.popContextProvider = function() : void {
   contextStack[index] = emptyObject;
@@ -79,36 +77,10 @@ exports.popContextProvider = function() : void {
   index--;
 };
 
-exports.pushTopLevelContextObject = function(context : Object, didChange : boolean) : void {
-  invariant(index === -1, 'Unexpected context found on stack');
-  index++;
-  contextStack[index] = context;
-  didPerformWorkStack[index] = didChange;
-};
-
-function processChildContext(fiber : Fiber, parentContext : Object): Object {
-  const instance = fiber.stateNode;
-  const childContextTypes = fiber.type.childContextTypes;
-  const childContext = instance.getChildContext();
-  for (let contextKey in childContext) {
-    invariant(
-      contextKey in childContextTypes,
-      '%s.getChildContext(): key "%s" is not defined in childContextTypes.',
-      getComponentName(fiber),
-      contextKey
-    );
-  }
-  if (__DEV__) {
-    const name = getComponentName(fiber);
-    const debugID = 0; // TODO: pass a real ID
-    checkReactTypeSpec(childContextTypes, childContext, 'childContext', name, null, debugID);
-  }
-  return {...parentContext, ...childContext};
-}
-exports.processChildContext = processChildContext;
-
 exports.pushContextProvider = function(fiber : Fiber, didPerformWork : boolean) : void {
   const instance = fiber.stateNode;
+  const childContextTypes = fiber.type.childContextTypes;
+
   const memoizedMergedChildContext = instance.__reactInternalMemoizedMergedChildContext;
   const canReuseMergedChildContext = !didPerformWork && memoizedMergedChildContext != null;
 
@@ -116,7 +88,21 @@ exports.pushContextProvider = function(fiber : Fiber, didPerformWork : boolean) 
   if (canReuseMergedChildContext) {
     mergedContext = memoizedMergedChildContext;
   } else {
-    mergedContext = processChildContext(fiber, getUnmaskedContext());
+    const childContext = instance.getChildContext();
+    for (let contextKey in childContext) {
+      invariant(
+        contextKey in childContextTypes,
+        '%s.getChildContext(): key "%s" is not defined in childContextTypes.',
+        getComponentName(fiber),
+        contextKey
+      );
+    }
+    if (__DEV__) {
+      const name = getComponentName(fiber);
+      const debugID = 0; // TODO: pass a real ID
+      checkReactTypeSpec(childContextTypes, childContext, 'childContext', name, null, debugID);
+    }
+    mergedContext = {...getUnmaskedContext(), ...childContext};
     instance.__reactInternalMemoizedMergedChildContext = mergedContext;
   }
 
@@ -129,20 +115,3 @@ exports.resetContext = function() : void {
   index = -1;
 };
 
-exports.findCurrentUnmaskedContext = function(fiber: Fiber) : Object {
-  // Currently this is only used with renderSubtreeIntoContainer; not sure if it
-  // makes sense elsewhere
-  invariant(
-    isFiberMounted(fiber) && fiber.tag === ClassComponent,
-    'Expected subtree parent to be a mounted class component'
-  );
-
-  let node : ?Fiber = parent;
-  while (node) {
-    if (isContextProvider(fiber)) {
-      return fiber.stateNode.__reactInternalMemoizedMergedChildContext;
-    }
-    node = node.return;
-  }
-  return emptyObject;
-};

@@ -182,12 +182,12 @@ var ReactNoop = {
     if (!roots.has(rootID)) {
       const container = { rootID: rootID, children: [] };
       rootContainers.set(rootID, container);
-      const root = NoopRenderer.mountContainer(element, container, null, callback);
+      const root = NoopRenderer.mountContainer(element, container, callback);
       roots.set(rootID, root);
     } else {
       const root = roots.get(rootID);
       if (root) {
-        NoopRenderer.updateContainer(element, root, null, callback);
+        NoopRenderer.updateContainer(element, root, callback);
       }
     }
   },

@@ -27,7 +27,7 @@ var ReactReconciler = require('ReactReconciler');
 var ReactUpdateQueue = require('ReactUpdateQueue');
 var ReactUpdates = require('ReactUpdates');
 
-var getContextForSubtree = require('getContextForSubtree');
+var emptyObject = require('emptyObject');
 var instantiateReactComponent = require('instantiateReactComponent');
 var invariant = require('invariant');
 var setInnerHTML = require('setInnerHTML');
@@ -466,7 +466,14 @@ var ReactMount = {
       { child: nextElement }
     );
 
-    var nextContext = getContextForSubtree(parentComponent);
+    var nextContext;
+    if (parentComponent) {
+      var parentInst = ReactInstanceMap.get(parentComponent);
+      nextContext = parentInst._processChildContext(parentInst._context);
+    } else {
+      nextContext = emptyObject;
+    }
+
     var prevComponent = getTopLevelWrapperInContainer(container);
 
     if (prevComponent) {
