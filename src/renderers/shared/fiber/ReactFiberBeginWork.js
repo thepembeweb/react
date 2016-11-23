@@ -33,6 +33,9 @@ var {
   resetContext,
 } = require('ReactFiberContext');
 var {
+  createPortal,
+} = require('ReactPortal');
+var {
   IndeterminateComponent,
   FunctionalComponent,
   ClassComponent,
@@ -198,7 +201,14 @@ module.exports = function<T, P, I, TI, C>(
     // Rerender
     const instance = workInProgress.stateNode;
     ReactCurrentOwner.current = workInProgress;
-    const nextChildren = instance.render();
+    let nextChildren = instance.render();
+    if (instance.__reactInternalSubtree) {
+      nextChildren = [nextChildren, createPortal(
+        instance.__reactInternalSubtree.element,
+        instance.__reactInternalSubtree.container,
+        null,
+      )];
+    }
     reconcileChildren(current, workInProgress, nextChildren);
     // Put context on the stack because we will work on children
     if (isContextProvider(workInProgress)) {
@@ -276,11 +286,19 @@ module.exports = function<T, P, I, TI, C>(
 
     if (typeof value === 'object' && value && typeof value.render === 'function') {
       // Proceed under the assumption that this is a class instance
+      const instance = value;
       workInProgress.tag = ClassComponent;
-      adoptClassInstance(workInProgress, value);
+      adoptClassInstance(workInProgress, instance);
       mountClassInstance(workInProgress);
       ReactCurrentOwner.current = workInProgress;
-      value = value.render();
+      value = instance.render();
+      if (instance.__reactInternalSubtree) {
+        value = [value, createPortal(
+          instance.__reactInternalSubtree.element,
+          instance.__reactInternalSubtree.container,
+          null,
+        )];
+      }
     } else {
       // Proceed under the assumption that this is a functional component
       workInProgress.tag = FunctionalComponent;

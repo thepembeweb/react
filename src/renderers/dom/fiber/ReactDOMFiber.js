@@ -22,9 +22,11 @@ var ReactDOMFeatureFlags = require('ReactDOMFeatureFlags');
 var ReactDOMFiberComponent = require('ReactDOMFiberComponent');
 var ReactDOMInjection = require('ReactDOMInjection');
 var ReactFiberReconciler = require('ReactFiberReconciler');
+var ReactInstanceMap = require('ReactInstanceMap');
 var ReactPortal = require('ReactPortal');
 
 var findDOMNode = require('findDOMNode');
+var invariant = require('invariant');
 var warning = require('warning');
 
 var {
@@ -185,6 +187,28 @@ var ReactDOM = {
     return DOMRenderer.batchedUpdates(fn);
   },
 
+  // Legacy API. We should replace callers with createPortal() when we can.
+  unstable_renderSubtreeIntoContainer(
+    parentComponent : ReactComponent<any, any, any>,
+    element : ReactElement<any>,
+    container : DOMContainerElement,
+    callback: ?Function
+  ) {
+    invariant(
+      parentComponent != null && ReactInstanceMap.has(parentComponent),
+      'parentComponent must be a valid React Component'
+    );
+    if (parentComponent.__reactInternalSubtree) {
+      // TODO: support updates
+      return;
+    }
+    // TODO: support multiple subtrees for one parent component.
+    parentComponent.__reactInternalSubtree = {
+      element,
+      container,
+    };
+    parentComponent.forceUpdate(callback);
+  },
 };
 
 module.exports = ReactDOM;
