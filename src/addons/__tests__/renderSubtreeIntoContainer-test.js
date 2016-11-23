@@ -14,7 +14,6 @@
 var React = require('React');
 var ReactDOM = require('ReactDOM');
 var ReactTestUtils = require('ReactTestUtils');
-var renderSubtreeIntoContainer = require('renderSubtreeIntoContainer');
 
 describe('renderSubtreeIntoContainer', () => {
 
@@ -48,7 +47,11 @@ describe('renderSubtreeIntoContainer', () => {
 
       componentDidMount() {
         expect(function() {
-          renderSubtreeIntoContainer(this, <Component />, portal);
+          ReactDOM.unstable_renderSubtreeIntoContainer(
+            this,
+            <Component />,
+            portal
+          );
         }.bind(this)).not.toThrow();
       }
     }
@@ -90,7 +93,11 @@ describe('renderSubtreeIntoContainer', () => {
 
       componentDidMount() {
         expect(function() {
-          renderSubtreeIntoContainer(<Parent />, <Component />, portal);
+          ReactDOM.unstable_renderSubtreeIntoContainer(
+            <Parent />,
+            <Component />,
+            portal
+          );
         }).toThrowError('parentComponentmust be a valid React Component');
       }
     }
@@ -134,11 +141,19 @@ describe('renderSubtreeIntoContainer', () => {
       }
 
       componentDidMount() {
-        renderSubtreeIntoContainer(this, <Component />, portal);
+        ReactDOM.unstable_renderSubtreeIntoContainer(
+          this,
+          <Component />,
+          portal
+        );
       }
 
       componentDidUpdate() {
-        renderSubtreeIntoContainer(this, <Component />, portal);
+        ReactDOM.unstable_renderSubtreeIntoContainer(
+          this,
+          <Component />,
+          portal
+        );
       }
     }
 
@@ -182,11 +197,19 @@ describe('renderSubtreeIntoContainer', () => {
       }
 
       componentDidMount() {
-        renderSubtreeIntoContainer(this, <Component />, portal);
+        ReactDOM.unstable_renderSubtreeIntoContainer(
+          this,
+          <Component />,
+          portal
+        );
       }
 
       componentDidUpdate() {
-        renderSubtreeIntoContainer(this, <Component />, portal);
+        ReactDOM.unstable_renderSubtreeIntoContainer(
+          this,
+          <Component />,
+          portal
+        );
       }
     }
 
