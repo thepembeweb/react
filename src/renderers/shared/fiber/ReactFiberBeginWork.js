@@ -115,6 +115,9 @@ module.exports = function<T, P, I, TI, C>(
         priorityLevel
       );
     } else if (current.child === workInProgress.child) {
+      if (workInProgress.tag !== HostContainer) {
+        throw new Error('gotcha')
+      }
       // If the current child is the same as the work in progress, it means that
       // we haven't yet started any work on these children. Therefore, we use
       // the clone algorithm to create a copy of all the current children.
@@ -309,7 +312,7 @@ module.exports = function<T, P, I, TI, C>(
         nextChildren,
         priorityLevel
       );
-    } else if (current.child === workInProgress.child) {
+    } else if (current.stateNode === workInProgress.stateNode) {
       clearDeletions(workInProgress);
 
       workInProgress.stateNode = reconcileChildFibers(
@@ -432,6 +435,7 @@ module.exports = function<T, P, I, TI, C>(
   }
 
   function beginWork(current : ?Fiber, workInProgress : Fiber, priorityLevel : PriorityLevel) : ?Fiber {
+    console.log('Begin work', workInProgress && workInProgress.type && workInProgress.type.name || workInProgress.type)
     if (!workInProgress.return) {
       // Don't start new work with context on the stack.
       resetContext();
