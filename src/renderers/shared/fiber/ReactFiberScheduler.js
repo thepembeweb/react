@@ -288,7 +288,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
 
       const returnFiber = workInProgress.return;
 
-      if (returnFiber) {
+      if (returnFiber && !next) {
         // Append all the effects of the subtree and this fiber onto the effect
         // list of the parent. The completion order of the children affects the
         // side-effect order.

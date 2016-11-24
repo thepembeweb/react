@@ -112,7 +112,6 @@ exports.findCurrentHostFiber = function(parent : Fiber) : Fiber | null {
     if (node.tag === HostComponent || node.tag === HostText) {
       return node;
     } else if (node.child) {
-      // TODO: Coroutines need to visit the stateNode.
       node = node.child;
       continue;
     }

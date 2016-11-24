@@ -296,7 +296,41 @@ module.exports = function<T, P, I, TI, C>(
     if (!coroutine) {
       throw new Error('Should be resolved by now');
     }
-    reconcileChildren(current, workInProgress, coroutine.children);
+
+    const nextChildren = coroutine.children;
+    const priorityLevel = workInProgress.pendingWorkPriority;
+    // At this point any memoization is no longer valid since we'll have changed
+    // the children.
+    workInProgress.memoizedProps = null;
+    if (!current) {
+      workInProgress.stateNode = mountChildFibersInPlace(
+        workInProgress,
+        workInProgress.stateNode,
+        nextChildren,
+        priorityLevel
+      );
+    } else if (current.child === workInProgress.child) {
+      clearDeletions(workInProgress);
+
+      workInProgress.stateNode = reconcileChildFibers(
+        workInProgress,
+        workInProgress.stateNode,
+        nextChildren,
+        priorityLevel
+      );
+
+      transferDeletions(workInProgress);
+    } else {
+      workInProgress.stateNode = reconcileChildFibersInPlace(
+        workInProgress,
+        workInProgress.stateNode,
+        nextChildren,
+        priorityLevel
+      );
+
+      transferDeletions(workInProgress);
+    }
+    // markChildAsProgressed(current, workInProgress, priorityLevel);
   }
 
   function updatePortalComponent(current, workInProgress) {
@@ -462,9 +496,7 @@ module.exports = function<T, P, I, TI, C>(
         // Intentionally fall through since this is now the same.
       case CoroutineComponent:
         updateCoroutineComponent(current, workInProgress);
-        // This doesn't take arbitrary time so we could synchronously just begin
-        // eagerly do the work of workInProgress.child as an optimization.
-        return workInProgress.child;
+        return workInProgress.stateNode;
       case YieldComponent:
         // A yield component is just a placeholder, we can just run through the
         // next one immediately.

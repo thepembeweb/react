@@ -112,7 +112,6 @@ module.exports = function<T, P, I, TI, C>(
       while (node.tag !== HostComponent && node.tag !== HostText) {
         // If it is not host node and, we might have a host node inside it.
         // Try to search down until we find one.
-        // TODO: For coroutines, this will have to search the stateNode.
         if (node.effectTag & Placement) {
           // If we don't have a child, try the siblings instead.
           continue siblings;
@@ -151,7 +150,6 @@ module.exports = function<T, P, I, TI, C>(
         // down its children. Instead, we'll get insertions from each child in
         // the portal directly.
       } else if (node.child) {
-        // TODO: Coroutines need to visit the stateNode.
         node = node.child;
         continue;
       }
@@ -178,7 +176,6 @@ module.exports = function<T, P, I, TI, C>(
     while (true) {
       commitUnmount(node);
       if (node.child) {
-        // TODO: Coroutines need to visit the stateNode.
         node.child.return = node;
         node = node.child;
         continue;
@@ -218,7 +215,6 @@ module.exports = function<T, P, I, TI, C>(
       } else {
         commitUnmount(node);
         if (node.child) {
-          // TODO: Coroutines need to visit the stateNode.
           node.child.return = node;
           node = node.child;
           continue;

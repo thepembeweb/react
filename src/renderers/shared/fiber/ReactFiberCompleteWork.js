@@ -51,6 +51,18 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
   const createTextInstance = config.createTextInstance;
   const prepareUpdate = config.prepareUpdate;
 
+  function markChildAsProgressed(current, workInProgress, priorityLevel) {
+    // We now have clones. Let's store them as the currently progressed work.
+    workInProgress.progressedChild = workInProgress.child;
+    workInProgress.progressedPriority = priorityLevel;
+    if (current) {
+      // We also store it on the current. When the alternate swaps in we can
+      // continue from this point.
+      current.progressedChild = workInProgress.progressedChild;
+      current.progressedPriority = workInProgress.progressedPriority;
+    }
+  }
+
   function markUpdate(workInProgress : Fiber) {
     // Tag the fiber with an update effect. This turns a Placement into
     // an UpdateAndPlacement.
@@ -63,7 +75,7 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
   }
 
   function appendAllYields(yields : Array<ReifiedYield>, workInProgress : Fiber) {
-    let node = workInProgress.child;
+    let node = workInProgress.stateNode;
     while (node) {
       if (node.tag === HostComponent || node.tag === HostText ||
           node.tag === Portal) {
@@ -71,7 +83,6 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
       } else if (node.tag === YieldComponent) {
         yields.push(node.type);
       } else if (node.child) {
-        // TODO: Coroutines need to visit the stateNode.
         node.child.return = node;
         node = node.child;
         continue;
@@ -113,16 +124,17 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
     var props = coroutine.props;
     var nextChildren = fn(props, yields);
 
-    var currentFirstChild = current ? current.stateNode : null;
+    var currentFirstChild = current ? current.child : null;
     // Inherit the priority of the returnFiber.
     const priority = workInProgress.pendingWorkPriority;
-    workInProgress.stateNode = reconcileChildFibers(
+    workInProgress.child = reconcileChildFibers(
       workInProgress,
       currentFirstChild,
       nextChildren,
       priority
     );
-    return workInProgress.stateNode;
+    markChildAsProgressed(current, workInProgress, priority);
+    return workInProgress.child;
   }
 
   function appendAllChildren(parent : I, workInProgress : Fiber) {
@@ -137,7 +149,6 @@ module.exports = function<T, P, I, TI, C>(config : HostConfig<T, P, I, TI, C>) {
         // down its children. Instead, we'll get insertions from each child in
         // the portal directly.
       } else if (node.child) {
-        // TODO: Coroutines need to visit the stateNode.
         node = node.child;
         continue;
       }
