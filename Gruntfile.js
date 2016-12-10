@@ -13,6 +13,7 @@ module.exports = function(grunt) {
     pkg: grunt.file.readJSON('package.json'),
     browserify: require('./grunt/config/browserify'),
     npm: require('./grunt/config/npm'),
+    rollup: require('./grunt/config/rollup'),
     clean: [
       './build',
       './*.gem',
@@ -71,6 +72,7 @@ module.exports = function(grunt) {
 
   // Our own browserify-based tasks to build a single JS file build.
   grunt.registerMultiTask('browserify', require('./grunt/tasks/browserify'));
+  grunt.registerMultiTask('rollup', require('./grunt/tasks/rollup'));
 
   grunt.registerMultiTask('npm', require('./grunt/tasks/npm'));
 
@@ -151,6 +153,19 @@ module.exports = function(grunt) {
     'version-check',
     'browserify:domFiberMin',
   ]);
+
+  grunt.registerTask('build:rollup-dom-fiber', [
+    'build-modules',
+    'version-check',
+    'rollup:domFiber',
+  ]);
+
+  grunt.registerTask('build:rollup-dom-fiber-min', [
+    'build-modules',
+    'version-check',
+    'rollup:domFiberMin',
+  ]);
+
   grunt.registerTask('build:npm-react', [
     'version-check',
     'build-modules',
