@@ -26,7 +26,7 @@ var {
 } = require('ReactTypeOfWork');
 
 if (__DEV__) {
-  var checkReactTypeSpec = require('checkReactTypeSpec');
+  // var checkReactTypeSpec = require('checkReactTypeSpec');
 }
 
 let index = -1;
@@ -56,7 +56,7 @@ exports.getMaskedContext = function(fiber : Fiber) {
   if (__DEV__) {
     const name = getComponentName(fiber);
     const debugID = 0; // TODO: pass a real ID
-    checkReactTypeSpec(contextTypes, context, 'context', name, null, debugID);
+    // checkReactTypeSpec(contextTypes, context, 'context', name, null, debugID);
   }
 
   return context;
@@ -105,7 +105,7 @@ function processChildContext(fiber : Fiber, parentContext : Object): Object {
   if (__DEV__) {
     const name = getComponentName(fiber);
     const debugID = 0; // TODO: pass a real ID
-    checkReactTypeSpec(childContextTypes, childContext, 'childContext', name, null, debugID);
+    // checkReactTypeSpec(childContextTypes, childContext, 'childContext', name, null, debugID);
   }
   return {...parentContext, ...childContext};
 }
@@ -162,3 +162,5 @@ exports.unwindContext = function(from : Fiber, to: Fiber) {
     node = node.return;
   }
 };
+
+module.exports = exports;

@@ -57,9 +57,9 @@ var {
   unwindContext,
 } = require('ReactFiberContext');
 
-if (__DEV__) {
-  var ReactFiberInstrumentation = require('ReactFiberInstrumentation');
-}
+// if (__DEV__) {
+//   var ReactFiberInstrumentation = require('ReactFiberInstrumentation');
+// }
 
 var timeHeuristicForUnitOfWork = 1;
 
@@ -456,25 +456,25 @@ module.exports = function<T, P, I, TI, C, CX>(config : HostConfig<T, P, I, TI, C
     // progress.
     const current = workInProgress.alternate;
 
-    if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-      ReactFiberInstrumentation.debugTool.onWillBeginWork(workInProgress);
-    }
+    // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+    //   ReactFiberInstrumentation.debugTool.onWillBeginWork(workInProgress);
+    // }
     // See if beginning this work spawns more work.
     let next = beginWork(current, workInProgress, nextPriorityLevel);
 
-    if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-      ReactFiberInstrumentation.debugTool.onDidBeginWork(workInProgress);
-    }
+    // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+    //   ReactFiberInstrumentation.debugTool.onDidBeginWork(workInProgress);
+    // }
 
     if (!next) {
-      if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-        ReactFiberInstrumentation.debugTool.onWillCompleteWork(workInProgress);
-      }
+      // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+      //   ReactFiberInstrumentation.debugTool.onWillCompleteWork(workInProgress);
+      // }
       // If this doesn't spawn new work, complete the current work.
       next = completeUnitOfWork(workInProgress);
-      if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-        ReactFiberInstrumentation.debugTool.onDidCompleteWork(workInProgress);
-      }
+      // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+      //   ReactFiberInstrumentation.debugTool.onDidCompleteWork(workInProgress);
+      // }
     }
 
     ReactCurrentOwner.current = null;
@@ -489,25 +489,25 @@ module.exports = function<T, P, I, TI, C, CX>(config : HostConfig<T, P, I, TI, C
     // progress.
     const current = workInProgress.alternate;
 
-    if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-      ReactFiberInstrumentation.debugTool.onWillBeginWork(workInProgress);
-    }
+    // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+    //   ReactFiberInstrumentation.debugTool.onWillBeginWork(workInProgress);
+    // }
     // See if beginning this work spawns more work.
     let next = beginFailedWork(current, workInProgress, nextPriorityLevel);
 
-    if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-      ReactFiberInstrumentation.debugTool.onDidBeginWork(workInProgress);
-    }
+    // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+    //   ReactFiberInstrumentation.debugTool.onDidBeginWork(workInProgress);
+    // }
 
     if (!next) {
-      if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-        ReactFiberInstrumentation.debugTool.onWillCompleteWork(workInProgress);
-      }
+      // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+      //   ReactFiberInstrumentation.debugTool.onWillCompleteWork(workInProgress);
+      // }
       // If this doesn't spawn new work, complete the current work.
       next = completeUnitOfWork(workInProgress);
-      if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-        ReactFiberInstrumentation.debugTool.onDidCompleteWork(workInProgress);
-      }
+      // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+      //   ReactFiberInstrumentation.debugTool.onDidCompleteWork(workInProgress);
+      // }
     }
 
     ReactCurrentOwner.current = null;

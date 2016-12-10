@@ -109,3 +109,5 @@ exports.mergeUpdateQueue = function(queue : UpdateQueue, instance : any, prevSta
   }
   return state;
 };
+
+module.exports = exports;

@@ -27,7 +27,7 @@ var ReactFiberScheduler = require('ReactFiberScheduler');
 var { createUpdateQueue, addCallbackToQueue } = require('ReactFiberUpdateQueue');
 
 if (__DEV__) {
-  var ReactFiberInstrumentation = require('ReactFiberInstrumentation');
+  // var ReactFiberInstrumentation = require('ReactFiberInstrumentation');
 }
 
 var { findCurrentHostFiber } = require('ReactFiberTreeReflection');
@@ -122,9 +122,9 @@ module.exports = function<T, P, I, TI, C, CX>(config : HostConfig<T, P, I, TI, C
 
       scheduleWork(root);
 
-      if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-        ReactFiberInstrumentation.debugTool.onMountContainer(root);
-      }
+      // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+      //   ReactFiberInstrumentation.debugTool.onMountContainer(root);
+      // }
 
       // It may seem strange that we don't return the root here, but that will
       // allow us to have containers that are in the middle of the tree instead
@@ -151,9 +151,9 @@ module.exports = function<T, P, I, TI, C, CX>(config : HostConfig<T, P, I, TI, C
 
       scheduleWork(root);
 
-      if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-        ReactFiberInstrumentation.debugTool.onUpdateContainer(root);
-      }
+      // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+      //   ReactFiberInstrumentation.debugTool.onUpdateContainer(root);
+      // }
     },
 
     unmountContainer(container : OpaqueNode) : void {
@@ -167,9 +167,9 @@ module.exports = function<T, P, I, TI, C, CX>(config : HostConfig<T, P, I, TI, C
 
       scheduleWork(root);
 
-      if (__DEV__ && ReactFiberInstrumentation.debugTool) {
-        ReactFiberInstrumentation.debugTool.onUnmountContainer(root);
-      }
+      // if (__DEV__ && ReactFiberInstrumentation.debugTool) {
+      //   ReactFiberInstrumentation.debugTool.onUnmountContainer(root);
+      // }
     },
 
     performWithPriority,

@@ -1130,3 +1130,5 @@ exports.cloneChildFibers = function(current : ?Fiber, workInProgress : Fiber) : 
     child = child.sibling;
   }
 };
+
+module.exports = exports;

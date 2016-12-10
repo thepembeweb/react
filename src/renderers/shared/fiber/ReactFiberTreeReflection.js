@@ -200,3 +200,5 @@ exports.getComponentName = function(fiber: Fiber): string {
     'A Component'
   );
 };
+
+module.exports = exports;

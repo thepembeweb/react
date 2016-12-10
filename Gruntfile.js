@@ -155,14 +155,14 @@ module.exports = function(grunt) {
   ]);
 
   grunt.registerTask('build:rollup-dom-fiber', [
-    'build-modules',
-    'version-check',
+    //'build-modules',
+    //'version-check',
     'rollup:domFiber',
   ]);
 
   grunt.registerTask('build:rollup-dom-fiber-min', [
-    'build-modules',
-    'version-check',
+    // 'build-modules',
+    // 'version-check',
     'rollup:domFiberMin',
   ]);
 

@@ -11,7 +11,7 @@
 
 'use strict';
 
-var React = require('React');
+// var React = require('React');
 
 var warning = require('warning');
 
@@ -55,7 +55,7 @@ var propTypes = {
       'set either `onChange` or `readOnly`.'
     );
   },
-  onChange: React.PropTypes.func,
+  // onChange: React.PropTypes.func,
 };
 
 var loggedTypeFailures = {};

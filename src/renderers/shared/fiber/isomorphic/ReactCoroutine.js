@@ -112,3 +112,5 @@ exports.isYield = function(object : mixed) : boolean {
 
 exports.REACT_YIELD_TYPE = REACT_YIELD_TYPE;
 exports.REACT_COROUTINE_TYPE = REACT_COROUTINE_TYPE;
+
+module.exports = exports;

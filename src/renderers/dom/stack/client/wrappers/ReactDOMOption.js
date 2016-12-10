@@ -11,7 +11,7 @@
 
 'use strict';
 
-var React = require('React');
+// var React = require('React');
 var ReactDOMComponentTree = require('ReactDOMComponentTree');
 var ReactDOMSelect = require('ReactDOMSelect');
 
@@ -23,20 +23,20 @@ function flattenChildren(children) {
 
   // Flatten children and warn if they aren't strings or numbers;
   // invalid types are ignored.
-  React.Children.forEach(children, function(child) {
-    if (child == null) {
-      return;
-    }
-    if (typeof child === 'string' || typeof child === 'number') {
-      content += child;
-    } else if (!didWarnInvalidOptionChildren) {
-      didWarnInvalidOptionChildren = true;
-      warning(
-        false,
-        'Only strings and numbers are supported as <option> children.'
-      );
-    }
-  });
+  // React.Children.forEach(children, function(child) {
+  //   if (child == null) {
+  //     return;
+  //   }
+  //   if (typeof child === 'string' || typeof child === 'number') {
+  //     content += child;
+  //   } else if (!didWarnInvalidOptionChildren) {
+  //     didWarnInvalidOptionChildren = true;
+  //     warning(
+  //       false,
+  //       'Only strings and numbers are supported as <option> children.'
+  //     );
+  //   }
+  // });
 
   return content;
 }

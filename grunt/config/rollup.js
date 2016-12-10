@@ -52,7 +52,7 @@ var buildConfigs = {
   domFiber: {
     after: [bannerify],
     dest: 'build/rollup-react-dom-fiber.js',
-    entry: 'build/modules/ReactDOMUMDEntry.js',
+    entry: './build/node_modules/react-dom/lib/ReactDOMFiber.js',
     format: 'umd',
     moduleName: 'ReactDOM',
     plugins: getPlugins({'process.env.NODE_ENV': JSON.stringify('development')}),
@@ -60,10 +60,10 @@ var buildConfigs = {
   domFiberMin: {
     after: [minify, bannerify],
     dest: 'build/rollup-react-dom-fiber.min.js',
-    entry: 'build/modules/ReactDOMUMDEntry.js',
+    entry: './build/node_modules/react-dom/lib/ReactDOMFiber.js',
     format: 'umd',
     moduleName: 'ReactDOM',
-    plugins: getPlugins({'process.env.NODE_ENV': JSON.stringify('development')}),
+    plugins: getPlugins({'process.env.NODE_ENV': JSON.stringify('production')}),
   },
 };
 

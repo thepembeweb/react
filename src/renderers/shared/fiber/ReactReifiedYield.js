@@ -43,3 +43,5 @@ exports.createUpdatedReifiedYield = function(previousYield : ReifiedYield, yield
     props: yieldNode.props,
   };
 };
+
+module.exports = exports;

@@ -49,3 +49,5 @@ exports.createFiberRoot = function(containerInfo : any, context : Object) : Fibe
   uninitializedFiber.stateNode = root;
   return root;
 };
+
+module.exports = exports;

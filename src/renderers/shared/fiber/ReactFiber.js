@@ -354,3 +354,5 @@ exports.createFiberFromPortal = function(portal : ReactPortal, priorityLevel : P
   };
   return fiber;
 };
+
+module.exports = exports;

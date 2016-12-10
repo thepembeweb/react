@@ -58,3 +58,5 @@ exports.isPortal = function(object : mixed) : boolean {
 };
 
 exports.REACT_PORTAL_TYPE = REACT_PORTAL_TYPE;
+
+module.exports = exports;
