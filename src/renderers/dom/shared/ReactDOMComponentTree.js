@@ -13,8 +13,8 @@
 
 var DOMProperty = require('DOMProperty');
 var ReactDOMComponentFlags = require('ReactDOMComponentFlags');
-var { HostComponent, HostText } = require('ReactTypeOfWork');
-
+var HostText = 6;
+var HostComponent = 5;
 var invariant = require('invariant');
 
 var ATTR_NAME = DOMProperty.ID_ATTRIBUTE_NAME;

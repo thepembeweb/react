@@ -16,12 +16,11 @@ var ExecutionEnvironment = require('ExecutionEnvironment');
 var PooledClass = require('PooledClass');
 var ReactDOMComponentTree = require('ReactDOMComponentTree');
 var ReactGenericBatching = require('ReactGenericBatching');
-var ReactTypeOfWork = require('ReactTypeOfWork');
 
 var getEventTarget = require('getEventTarget');
 var getUnboundedScrollPosition = require('getUnboundedScrollPosition');
 
-var { HostRoot } = ReactTypeOfWork;
+var HostRoot = 3;
 
 /**
  * Find the deepest React component completely containing the root of the

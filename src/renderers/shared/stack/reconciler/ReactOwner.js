@@ -12,7 +12,7 @@
 
 'use strict';
 
-var { ClassComponent } = require('ReactTypeOfWork');
+var ClassComponent = 2;
 
 var emptyObject = require('emptyObject');
 var invariant = require('invariant');

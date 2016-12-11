@@ -20,9 +20,7 @@ var ReactControlledComponent = require('ReactControlledComponent');
 var ReactDOM = require('ReactDOM');
 var ReactDOMComponentTree = require('ReactDOMComponentTree');
 var ReactBrowserEventEmitter = require('ReactBrowserEventEmitter');
-var ReactFiberTreeReflection = require('ReactFiberTreeReflection');
 var ReactInstanceMap = require('ReactInstanceMap');
-var ReactTypeOfWork = require('ReactTypeOfWork');
 var ReactGenericBatching = require('ReactGenericBatching');
 var SyntheticEvent = require('SyntheticEvent');
 var ReactShallowRenderer = require('ReactShallowRenderer');
@@ -31,12 +29,134 @@ var findDOMNode = require('findDOMNode');
 var invariant = require('invariant');
 
 var topLevelTypes = EventConstants.topLevelTypes;
-var {
-  ClassComponent,
-  FunctionalComponent,
-  HostComponent,
-  HostText,
-} = ReactTypeOfWork;
+
+
+
+
+var MOUNTING = 1;
+var MOUNTED = 2;
+var UNMOUNTED = 3;
+
+function isFiberMountedImpl(fiber : Fiber) : number {
+  let node = fiber;
+  if (!fiber.alternate) {
+    // If there is no alternate, this might be a new tree that isn't inserted
+    // yet. If it is, then it will have a pending insertion effect on it.
+    if ((node.effectTag & Placement) !== NoEffect) {
+      return MOUNTING;
+    }
+    while (node.return) {
+      node = node.return;
+      if ((node.effectTag & Placement) !== NoEffect) {
+        return MOUNTING;
+      }
+    }
+  } else {
+    while (node.return) {
+      node = node.return;
+    }
+  }
+  if (node.tag === HostRoot) {
+    // TODO: Check if this was a nested HostRoot when used with
+    // renderContainerIntoSubtree.
+    return MOUNTED;
+  }
+  // If we didn't hit the root, that means that we're in an disconnected tree
+  // that has been unmounted.
+  return UNMOUNTED;
+}
+function isFiberMounted(fiber : Fiber) : boolean {
+  return isFiberMountedImpl(fiber) === MOUNTED;
+};
+
+function isMounted(component : ReactComponent<any, any, any>) : boolean {
+  var fiber : ?Fiber = ReactInstanceMap.get(component);
+  if (!fiber) {
+    return false;
+  }
+  return isFiberMountedImpl(fiber) === MOUNTED;
+};
+
+function assertIsMounted(fiber) {
+  invariant(
+    isFiberMountedImpl(fiber) === MOUNTED,
+    'Unable to find node on an unmounted component.'
+  );
+}
+
+function findCurrentFiberUsingSlowPath(fiber : Fiber) : Fiber | null {
+  let alternate = fiber.alternate;
+  if (!alternate) {
+    // If there is no alternate, then we only need to check if it is mounted.
+    const state = isFiberMountedImpl(fiber);
+    invariant(
+      state !== UNMOUNTED,
+      'Unable to find node on an unmounted component.'
+    );
+    if (state === MOUNTING) {
+      return null;
+    }
+    return fiber;
+  }
+  // If we have two possible branches, we'll walk backwards up to the root
+  // to see what path the root points to. On the way we may hit one of the
+  // special cases and we'll deal with them.
+  let a = fiber;
+  let b = alternate;
+  while (true) {
+    let parentA = a.return;
+    let parentB = b.return;
+    if (!parentA || !parentB) {
+      // We're at the root.
+      break;
+    }
+    if (parentA.child === parentB.child) {
+      // If both parents are the same, then that is the current parent. If
+      // they're different but point to the same child, then it doesn't matter.
+      // Regardless, whatever child they point to is the current child.
+      // So we can now determine which child is current by scanning the child
+      // list for either A or B.
+      let child = parentA.child;
+      while (child) {
+        if (child === a) {
+          // We've determined that A is the current branch.
+          assertIsMounted(parentA);
+          return fiber;
+        }
+        if (child === b) {
+          // We've determined that B is the current branch.
+          assertIsMounted(parentA);
+          return alternate;
+        }
+        child = child.sibling;
+      }
+      // We should never have an alternate for any mounting node. So the only
+      // way this could possibly happen is if this was unmounted, if at all.
+      invariant(
+        false,
+        'Unable to find node on an unmounted component.'
+      );
+    }
+    a = parentA;
+    b = parentB;
+    invariant(
+      a.alternate === b,
+      'Return fibers should always be each others\' alternates.'
+    );
+  }
+  // If the root is not a host container, we're in a disconnected tree. I.e.
+  // unmounted.
+  invariant(
+    a.tag === HostRoot,
+    'Unable to find node on an unmounted component.'
+  );
+  if (a.stateNode.current === a) {
+    // We've determined that A is the current branch.
+    return fiber;
+  }
+  // Otherwise B has to be current branch.
+  return alternate;
+}
 
 function Event(suffix) {}
 
@@ -80,7 +200,7 @@ function findAllInRenderedFiberTreeInternal(fiber, test) {
   if (!fiber) {
     return [];
   }
-  var currentParent = ReactFiberTreeReflection.findCurrentFiberUsingSlowPath(
+  var currentParent = findCurrentFiberUsingSlowPath(
     fiber
   );
   if (!currentParent) {

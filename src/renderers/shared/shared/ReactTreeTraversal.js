@@ -11,7 +11,7 @@
 
 'use strict';
 
-var { HostComponent } = require('ReactTypeOfWork');
+var HostComponent = 5;
 var { getNodeFromInstance, getInstanceFromNode } = require('EventPluginUtils');
 
 function getParent(inst) {
