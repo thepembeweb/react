@@ -10,14 +10,7 @@
  * @flow
  */
 
-
-var  NoWork = 0; // No work is pending.
-var  SynchronousPriority = 1; // For controlled text inputs. Synchronous sidevareffects =
-var  TaskPriority = 2; // Completes at the end of the current tick.
-var  AnimationPriority = 3; // Needs to complete before the next frame.
-var  HighPriority = 4; // Interaction that needs to complete pretty soon to feel responsive.
-var  LowPriority = 5; // Data fetching, or result from updating stores.
-var  OffscreenPriority = 6; // Won't be visible but do the work in case it becomes visible.
+  var useSyncScheduling = true;
 
 var getContextForSubtree = require('getContextForSubtree');
 
@@ -123,11 +116,11 @@ var timeHeuristicForUnitOfWork = 1;
     let parent = fiber.return;
     while (parent) {
       switch (parent.tag) {
-        case HostComponent:
+        case 5:
           return parent.stateNode;
-        case HostRoot:
+        case 3:
           return parent.stateNode.containerInfo;
-        case HostPortal:
+        case 4:
           return parent.stateNode.containerInfo;
       }
       parent = parent.return;
@@ -148,9 +141,9 @@ var timeHeuristicForUnitOfWork = 1;
 
   function isHostParent(fiber : Fiber) : boolean {
     return (
-      fiber.tag === HostComponent ||
-      fiber.tag === HostRoot ||
-      fiber.tag === HostPortal
+      fiber.tag === 5 ||
+      fiber.tag === 3 ||
+      fiber.tag === 4
     );
   }
 
@@ -172,11 +165,11 @@ var timeHeuristicForUnitOfWork = 1;
       }
       node.sibling.return = node.return;
       node = node.sibling;
-      while (node.tag !== HostComponent && node.tag !== HostText) {
+      while (node.tag !== 5 && node.tag !== 6) {
         // If it is not host node and, we might have a host node inside it.
         // Try to search down until we find one.
         // TODO: For coroutines, this will have to search the stateNode.
-        if (node.effectTag & Placement) {
+        if (node.effectTag & 1) {
           // If we don't have a child, try the siblings instead.
           continue siblings;
         }
@@ -188,7 +181,7 @@ var timeHeuristicForUnitOfWork = 1;
         }
       }
       // Check if this host node is stable or about to be placed.
-      if (!(node.effectTag & Placement)) {
+      if (!(node.effectTag & 1)) {
         // Found it!
         return node.stateNode;
       }
@@ -200,23 +193,23 @@ var timeHeuristicForUnitOfWork = 1;
     const parentFiber = getHostParentFiber(finishedWork);
     let parent;
     switch (parentFiber.tag) {
-      case HostComponent:
+      case 5:
         parent = parentFiber.stateNode;
         break;
-      case HostRoot:
+      case 3:
         parent = parentFiber.stateNode.containerInfo;
         break;
-      case HostPortal:
+      case 4:
         parent = parentFiber.stateNode.containerInfo;
         break;
       default:
         throw new Error('Invalid host parent fiber.');
     }
-    if (parentFiber.effectTag & ContentReset) {
+    if (parentFiber.effectTag & 8) {
       // Reset the text content of the parent before doing any insertions
       resetTextContent(parent);
-      // Clear ContentReset from the effect tag
-      parentFiber.effectTag &= ~ContentReset;
+      // Clear 8 from the effect tag
+      parentFiber.effectTag &= ~8;
     }
 
     const before = getHostSibling(finishedWork);
@@ -224,13 +217,13 @@ var timeHeuristicForUnitOfWork = 1;
     // children to find all the terminal nodes.
     let node : Fiber = finishedWork;
     while (true) {
-      if (node.tag === HostComponent || node.tag === HostText) {
+      if (node.tag === 5 || node.tag === 6) {
         if (before) {
           insertBefore(parent, node.stateNode, before);
         } else {
           appendChild(parent, node.stateNode);
         }
-      } else if (node.tag === HostPortal) {
+      } else if (node.tag === 4) {
         // If the insertion itself is a portal, then we don't want to traverse
         // down its children. Instead, we'll get insertions from each child in
         // the portal directly.
@@ -288,12 +281,12 @@ var timeHeuristicForUnitOfWork = 1;
     // children to find all the terminal nodes.
     let node : Fiber = current;
     while (true) {
-      if (node.tag === HostComponent || node.tag === HostText) {
+      if (node.tag === 5 || node.tag === 6) {
         commitNestedUnmounts(node);
         // After all the children have unmounted, it is now safe to remove the
         // node from the tree.
         removeChild(parent, node.stateNode);
-      } else if (node.tag === HostPortal) {
+      } else if (node.tag === 4) {
         // When we go into a portal, it becomes the parent to remove from.
         // We will reassign it back when we pop the portal on the way up.
         parent = node.stateNode.containerInfo;
@@ -318,7 +311,7 @@ var timeHeuristicForUnitOfWork = 1;
           return;
         }
         node = node.return;
-        if (node.tag === HostPortal) {
+        if (node.tag === 4) {
           // When we go out of the portal, we need to restore the parent.
           // Since we don't keep a stack of them, we will search for it.
           parent = getHostParent(node);
@@ -353,7 +346,7 @@ var timeHeuristicForUnitOfWork = 1;
   // interrupt deletion, so it's okay
   function commitUnmount(current : Fiber) : void {
     switch (current.tag) {
-      case ClassComponent: {
+      case 2: {
         safelyDetachRef(current);
         const instance = current.stateNode;
         if (typeof instance.componentWillUnmount === 'function') {
@@ -361,15 +354,15 @@ var timeHeuristicForUnitOfWork = 1;
         }
         return;
       }
-      case HostComponent: {
+      case 5: {
         safelyDetachRef(current);
         return;
       }
-      case CoroutineComponent: {
+      case 7: {
         commitNestedUnmounts(current.stateNode);
         return;
       }
-      case HostPortal: {
+      case 4: {
         // TODO: this is recursive.
         commitDeletion(current);
         return;
@@ -379,11 +372,11 @@ var timeHeuristicForUnitOfWork = 1;
 
   function commitWork(current : ?Fiber, finishedWork : Fiber) : void {
     switch (finishedWork.tag) {
-      case ClassComponent: {
+      case 2: {
         detachRefIfNeeded(current, finishedWork);
         return;
       }
-      case HostComponent: {
+      case 5: {
         const instance : I = finishedWork.stateNode;
         if (instance != null && current) {
           // Commit the work prepared earlier.
@@ -395,7 +388,7 @@ var timeHeuristicForUnitOfWork = 1;
         detachRefIfNeeded(current, finishedWork);
         return;
       }
-      case HostText: {
+      case 6: {
         if (finishedWork.stateNode == null || !current) {
           throw new Error('This should only be done during updates.');
         }
@@ -405,10 +398,10 @@ var timeHeuristicForUnitOfWork = 1;
         commitTextUpdate(textInstance, oldText, newText);
         return;
       }
-      case HostRoot: {
+      case 3: {
         return;
       }
-      case HostPortal: {
+      case 4: {
         return;
       }
       default:
@@ -418,9 +411,9 @@ var timeHeuristicForUnitOfWork = 1;
 
   function commitLifeCycles(current : ?Fiber, finishedWork : Fiber) : void {
     switch (finishedWork.tag) {
-      case ClassComponent: {
+      case 2: {
         const instance = finishedWork.stateNode;
-        if (finishedWork.effectTag & Update) {
+        if (finishedWork.effectTag & 2) {
           if (!current) {
             if (typeof instance.componentDidMount === 'function') {
               instance.componentDidMount();
@@ -438,7 +431,7 @@ var timeHeuristicForUnitOfWork = 1;
         if (finishedWork.alternate) {
           finishedWork.alternate.updateQueue = null;
         }
-        if (finishedWork.effectTag & Callback) {
+        if (finishedWork.effectTag & 16) {
           if (finishedWork.callbackList) {
             const callbackList = finishedWork.callbackList;
             finishedWork.callbackList = null;
@@ -447,7 +440,7 @@ var timeHeuristicForUnitOfWork = 1;
         }
         return;
       }
-      case HostRoot: {
+      case 3: {
         const rootFiber = finishedWork.stateNode;
         if (rootFiber.callbackList) {
           const callbackList = rootFiber.callbackList;
@@ -456,16 +449,16 @@ var timeHeuristicForUnitOfWork = 1;
         }
         return;
       }
-      case HostComponent: {
+      case 5: {
         const instance : I = finishedWork.stateNode;
         attachRef(current, finishedWork, instance);
         return;
       }
-      case HostText: {
+      case 6: {
         // We have no life-cycles associated with text.
         return;
       }
-      case HostPortal: {
+      case 4: {
         // We have no life-cycles associated with portals.
         return;
       }
@@ -479,23 +472,23 @@ var timeHeuristicForUnitOfWork = 1;
 // CompleteWork
 
   function markUpdate(workInProgress : Fiber) {
-    // Tag the fiber with an update effect. This turns a Placement into
+    // Tag the fiber with an update effect. This turns a 1 into
     // an UpdateAndPlacement.
-    workInProgress.effectTag |= Update;
+    workInProgress.effectTag |= 2;
   }
 
   function markCallback(workInProgress : Fiber) {
     // Tag the fiber with a callback effect.
-    workInProgress.effectTag |= Callback;
+    workInProgress.effectTag |= 16;
   }
 
   function appendAllYields(yields : Array<ReifiedYield>, workInProgress : Fiber) {
     let node = workInProgress.child;
     while (node) {
-      if (node.tag === HostComponent || node.tag === HostText ||
-          node.tag === HostPortal) {
+      if (node.tag === 5 || node.tag === 6 ||
+          node.tag === 4) {
         throw new Error('A coroutine cannot have host component children.');
-      } else if (node.tag === YieldComponent) {
+      } else if (node.tag === 9) {
         yields.push(node.type);
       } else if (node.child) {
         // TODO: Coroutines need to visit the stateNode.
@@ -530,7 +523,7 @@ var timeHeuristicForUnitOfWork = 1;
     // So this requires nested handlers.
     // Note: This doesn't mutate the alternate node. I don't think it needs to
     // since this stage is reset for every pass.
-    workInProgress.tag = CoroutineHandlerPhase;
+    workInProgress.tag = 8;
 
     // Build up the yields.
     // TODO: Compare this to a generator or opaque helpers like Children.
@@ -557,9 +550,9 @@ var timeHeuristicForUnitOfWork = 1;
     // children to find all the terminal nodes.
     let node = workInProgress.child;
     while (node) {
-      if (node.tag === HostComponent || node.tag === HostText) {
+      if (node.tag === 5 || node.tag === 6) {
         appendInitialChild(parent, node.stateNode);
-      } else if (node.tag === HostPortal) {
+      } else if (node.tag === 4) {
         // If we have a portal child, then we don't want to traverse
         // down its children. Instead, we'll get insertions from each child in
         // the portal directly.
@@ -583,10 +576,10 @@ var timeHeuristicForUnitOfWork = 1;
 
   function completeWork(current : ?Fiber, workInProgress : Fiber) : ?Fiber {
     switch (workInProgress.tag) {
-      case FunctionalComponent:
+      case 1:
         workInProgress.memoizedProps = workInProgress.pendingProps;
         return null;
-      case ClassComponent:
+      case 2:
         // We are leaving this subtree, so pop context if any.
         if (isContextProvider(workInProgress)) {
           popContextProvider();
@@ -615,7 +608,7 @@ var timeHeuristicForUnitOfWork = 1;
           markCallback(workInProgress);
         }
         return null;
-      case HostRoot: {
+      case 3: {
         workInProgress.memoizedProps = workInProgress.pendingProps;
         popContextProvider();
         const fiberRoot = (workInProgress.stateNode : FiberRoot);
@@ -628,7 +621,7 @@ var timeHeuristicForUnitOfWork = 1;
         markUpdate(workInProgress);
         return null;
       }
-      case HostComponent:
+      case 5:
         popHostContext(workInProgress);
         let newProps = workInProgress.pendingProps;
         if (current && workInProgress.stateNode != null) {
@@ -681,13 +674,13 @@ var timeHeuristicForUnitOfWork = 1;
         }
         workInProgress.memoizedProps = newProps;
         return null;
-      case HostText:
+      case 6:
         let newText = workInProgress.pendingProps;
         if (current && workInProgress.stateNode != null) {
           const oldText = current.memoizedProps;
           if (newText === null) {
             // If this was a bail out we need to fall back to memoized text.
-            // This works the same way as HostComponent.
+            // This works the same way as 5.
             newText = workInProgress.memoizedProps;
             if (newText === null) {
               newText = oldText;
@@ -712,20 +705,20 @@ var timeHeuristicForUnitOfWork = 1;
         }
         workInProgress.memoizedProps = newText;
         return null;
-      case CoroutineComponent:
+      case 7:
         return moveCoroutineToHandlerPhase(current, workInProgress);
-      case CoroutineHandlerPhase:
+      case 8:
         workInProgress.memoizedProps = workInProgress.pendingProps;
         // Reset the tag to now be a first phase coroutine.
-        workInProgress.tag = CoroutineComponent;
+        workInProgress.tag = 7;
         return null;
-      case YieldComponent:
+      case 9:
         // Does nothing.
         return null;
-      case Fragment:
+      case 10:
         workInProgress.memoizedProps = workInProgress.pendingProps;
         return null;
-      case HostPortal:
+      case 4:
         // TODO: Only mark this as an update if we have any pending callbacks.
         markUpdate(workInProgress);
         workInProgress.memoizedProps = workInProgress.pendingProps;
@@ -733,7 +726,7 @@ var timeHeuristicForUnitOfWork = 1;
         return null;
 
       // Error cases
-      case IndeterminateComponent:
+      case 0:
         throw new Error('An indeterminate component should have become determinate before completing.');
       default:
         throw new Error('Unknown unit of work tag');
@@ -806,13 +799,13 @@ var createFiber = function(tag : TypeOfWork, key : null | string) : Fiber {
     memoizedState: null,
     callbackList: null,
 
-    effectTag: NoEffect,
+    effectTag: 0,
     nextEffect: null,
     firstEffect: null,
     lastEffect: null,
 
-    pendingWorkPriority: NoWork,
-    progressedPriority: NoWork,
+    pendingWorkPriority: 0,
+    progressedPriority: 0,
     progressedChild: null,
     progressedFirstDeletion: null,
     progressedLastDeletion: null,
@@ -839,7 +832,7 @@ function cloneFiber(fiber : Fiber, priorityLevel : PriorityLevel) : Fiber {
   // we need to reset its work in progress flag now. We don't have an
   // opportunity to do this earlier since we don't traverse the tree when
   // the work in progress tree becomes the current tree.
-  // fiber.progressedPriority = NoWork;
+  // fiber.progressedPriority = 0;
   // fiber.progressedChild = null;
 
   // We use a double buffering pooling technique because we know that we'll only
@@ -852,7 +845,7 @@ function cloneFiber(fiber : Fiber, priorityLevel : PriorityLevel) : Fiber {
     // If we clone, then we do so from the "current" state. The current state
     // can't have any side-effects that are still valid so we reset just to be
     // sure.
-    alt.effectTag = NoEffect;
+    alt.effectTag = 0;
     alt.nextEffect = null;
     alt.firstEffect = null;
     alt.lastEffect = null;
@@ -887,7 +880,7 @@ function cloneFiber(fiber : Fiber, priorityLevel : PriorityLevel) : Fiber {
 };
 
 function createHostRootFiber() : Fiber {
-  const fiber = createFiber(HostRoot, null);
+  const fiber = createFiber(3, null);
   return fiber;
 };
 
@@ -902,14 +895,14 @@ function createFiberFromElement(element : ReactElement<*>, priorityLevel : Prior
 function createFiberFromFragment(elements : ReactFragment, priorityLevel : PriorityLevel) : Fiber {
   // TODO: Consider supporting keyed fragments. Technically, we accidentally
   // support that in the existing React.
-  const fiber = createFiber(Fragment, null);
+  const fiber = createFiber(10, null);
   fiber.pendingProps = elements;
   fiber.pendingWorkPriority = priorityLevel;
   return fiber;
 };
 
 function createFiberFromText(content : string, priorityLevel : PriorityLevel) : Fiber {
-  const fiber = createFiber(HostText, null);
+  const fiber = createFiber(6, null);
   fiber.pendingProps = content;
   fiber.pendingWorkPriority = priorityLevel;
   return fiber;
@@ -919,11 +912,11 @@ function createFiberFromElementType(type : mixed, key : null | string) : Fiber {
   let fiber;
   if (typeof type === 'function') {
     fiber = shouldConstruct(type) ?
-      createFiber(ClassComponent, key) :
-      createFiber(IndeterminateComponent, key);
+      createFiber(2, key) :
+      createFiber(0, key);
     fiber.type = type;
   } else if (typeof type === 'string') {
-    fiber = createFiber(HostComponent, key);
+    fiber = createFiber(5, key);
     fiber.type = type;
   } else if (typeof type === 'object' && type !== null) {
     // Currently assumed to be a continuation and therefore is a fiber already.
@@ -947,7 +940,7 @@ function createFiberFromElementType(type : mixed, key : null | string) : Fiber {
 
 
 function createFiberFromCoroutine(coroutine : ReactCoroutine, priorityLevel : PriorityLevel) : Fiber {
-  const fiber = createFiber(CoroutineComponent, coroutine.key);
+  const fiber = createFiber(7, coroutine.key);
   fiber.type = coroutine.handler;
   fiber.pendingProps = coroutine;
   fiber.pendingWorkPriority = priorityLevel;
@@ -955,13 +948,13 @@ function createFiberFromCoroutine(coroutine : ReactCoroutine, priorityLevel : Pr
 };
 
 function createFiberFromYield(yieldNode : ReactYield, priorityLevel : PriorityLevel) : Fiber {
-  const fiber = createFiber(YieldComponent, yieldNode.key);
+  const fiber = createFiber(9, yieldNode.key);
   fiber.pendingProps = {};
   return fiber;
 };
 
 function createFiberFromPortal(portal : ReactPortal, priorityLevel : PriorityLevel) : Fiber {
-  const fiber = createFiber(HostPortal, portal.key);
+  const fiber = createFiber(4, portal.key);
   fiber.pendingProps = portal.children;
   fiber.pendingWorkPriority = priorityLevel;
   fiber.stateNode = {
@@ -984,7 +977,7 @@ function coerceRef(current: ?Fiber, element: ReactElement<any>) {
       const ownerFiber : ?(Fiber | ReactInstance) = (element._owner : any);
       let inst;
       if (ownerFiber) {
-        if ((ownerFiber : any).tag === ClassComponent) {
+        if ((ownerFiber : any).tag === 2) {
           inst = (ownerFiber : any).stateNode;
         } else {
           // Stack
@@ -1046,7 +1039,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
           childToDelete;
     }
     childToDelete.nextEffect = null;
-    childToDelete.effectTag = Deletion;
+    childToDelete.effectTag = 4;
   }
 
   function deleteRemainingChildren(
@@ -1102,7 +1095,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
       // we're reconciling at a lower priority that means that this was
       // down-prioritized.
       fiber.pendingWorkPriority = priority;
-      fiber.effectTag = NoEffect;
+      fiber.effectTag = 0;
       fiber.index = 0;
       fiber.sibling = null;
       return fiber;
@@ -1120,7 +1113,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
       const oldIndex = current.index;
       if (oldIndex < lastPlacedIndex) {
         // This is a move.
-        newFiber.effectTag = Placement;
+        newFiber.effectTag = 1;
         return lastPlacedIndex;
       } else {
         // This item can stay in place.
@@ -1128,7 +1121,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
       }
     } else {
       // This is an insertion.
-      newFiber.effectTag = Placement;
+      newFiber.effectTag = 1;
       return lastPlacedIndex;
     }
   }
@@ -1137,7 +1130,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
     // This is simpler for the single child case. We only need to do a
     // placement for inserting new children.
     if (shouldTrackSideEffects && !newFiber.alternate) {
-      newFiber.effectTag = Placement;
+      newFiber.effectTag = 1;
     }
     return newFiber;
   }
@@ -1148,13 +1141,13 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
     textContent : string,
     priority : PriorityLevel
   ) {
-    if (current == null || current.tag !== HostText) {
+    if (current == null || current.tag !== 6) {
       // Insert
       const created = createFiberFromText(textContent, priority);
       created.return = returnFiber;
       return created;
     } else {
-      // Update
+      // 2
       const existing = useFiber(current, priority);
       existing.pendingProps = textContent;
       existing.return = returnFiber;
@@ -1191,7 +1184,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
     priority : PriorityLevel
   ) : Fiber {
     // TODO: Should this also compare handler to determine whether to reuse?
-    if (current == null || current.tag !== CoroutineComponent) {
+    if (current == null || current.tag !== 7) {
       // Insert
       const created = createFiberFromCoroutine(coroutine, priority);
       created.return = returnFiber;
@@ -1212,7 +1205,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
     priority : PriorityLevel
   ) : Fiber {
     // TODO: Should this also compare continuation to determine whether to reuse?
-    if (current == null || current.tag !== YieldComponent) {
+    if (current == null || current.tag !== 9) {
       // Insert
       const reifiedYield = createReifiedYield(yieldNode);
       const created = createFiberFromYield(yieldNode, priority);
@@ -1239,7 +1232,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
   ) : Fiber {
     if (
       current == null ||
-      current.tag !== HostPortal ||
+      current.tag !== 4 ||
       current.stateNode.containerInfo !== portal.containerInfo ||
       current.stateNode.implementation !== portal.implementation
     ) {
@@ -1248,7 +1241,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
       created.return = returnFiber;
       return created;
     } else {
-      // Update
+      // 2
       const existing = useFiber(current, priority);
       existing.pendingProps = portal.children;
       existing.return = returnFiber;
@@ -1262,13 +1255,13 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
     fragment : Iterable<*>,
     priority : PriorityLevel
   ) : Fiber {
-    if (current == null || current.tag !== Fragment) {
+    if (current == null || current.tag !== 10) {
       // Insert
       const created = createFiberFromFragment(fragment, priority);
       created.return = returnFiber;
       return created;
     } else {
-      // Update
+      // 2
       const existing = useFiber(current, priority);
       existing.pendingProps = fragment;
       existing.return = returnFiber;
@@ -1336,7 +1329,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
     newChild : any,
     priority : PriorityLevel
   ) : ?Fiber {
-    // Update the fiber if the keys match, otherwise return null.
+    // 2 the fiber if the keys match, otherwise return null.
 
     const key = oldFiber ? oldFiber.key : null;
 
@@ -1743,7 +1736,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
   ) : Fiber {
     // There's no need to check for keys on text nodes since we don't have a
     // way to define them.
-    if (currentFirstChild && currentFirstChild.tag === HostText) {
+    if (currentFirstChild && currentFirstChild.tag === 6) {
       // We already have an existing node so let's just update it and delete
       // the rest.
       deleteRemainingChildren(returnFiber, currentFirstChild.sibling);
@@ -1807,7 +1800,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
       // TODO: If key === null and child.key === null, then this only applies to
       // the first item in the list.
       if (child.key === key) {
-        if (child.tag === CoroutineComponent) {
+        if (child.tag === 7) {
           deleteRemainingChildren(returnFiber, child.sibling);
           const existing = useFiber(child, priority);
           existing.pendingProps = coroutine;
@@ -1840,7 +1833,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
       // TODO: If key === null and child.key === null, then this only applies to
       // the first item in the list.
       if (child.key === key) {
-        if (child.tag === YieldComponent) {
+        if (child.tag === 9) {
           deleteRemainingChildren(returnFiber, child.sibling);
           const existing = useFiber(child, priority);
           existing.type = createUpdatedReifiedYield(
@@ -1879,7 +1872,7 @@ function ChildReconciler(shouldClone, shouldTrackSideEffects) {
       // the first item in the list.
       if (child.key === key) {
         if (
-          child.tag === HostPortal &&
+          child.tag === 4 &&
           child.stateNode.containerInfo === portal.containerInfo &&
           child.stateNode.implementation === portal.implementation
         ) {
@@ -2009,7 +2002,7 @@ function cloneChildFibers(current : ?Fiber, workInProgress : Fiber) : void {
     let currentChild = workInProgress.child;
     // TODO: This used to reset the pending priority. Not sure if that is needed.
     // workInProgress.pendingWorkPriority = current.pendingWorkPriority;
-    // TODO: The below priority used to be set to NoWork which would've
+    // TODO: The below priority used to be set to 0 which would've
     // dropped work. This is currently unobservable but will become
     // observable when the first sibling has lower priority work remaining
     // than the next sibling. At that point we should add tests that catches
@@ -2089,7 +2082,7 @@ function hasContextChanged() : boolean {
 
 function isContextProvider(fiber : Fiber) : boolean {
   return (
-    fiber.tag === ClassComponent &&
+    fiber.tag === 2 &&
     // Instance might be null, if the fiber errored during construction
     fiber.stateNode &&
     typeof fiber.stateNode.getChildContext === 'function'
@@ -2155,12 +2148,12 @@ function findCurrentUnmaskedContext(fiber: Fiber) : Object {
   // Currently this is only used with renderSubtreeIntoContainer; not sure if it
   // makes sense elsewhere
   invariant(
-    isFiberMounted(fiber) && fiber.tag === ClassComponent,
+    isFiberMounted(fiber) && fiber.tag === 2,
     'Expected subtree parent to be a mounted class component'
   );
 
   let node : Fiber = fiber;
-  while (node.tag !== HostRoot) {
+  while (node.tag !== 3) {
     if (isContextProvider(node)) {
       return node.stateNode.__reactInternalMemoizedMergedChildContext;
     }
@@ -2271,45 +2264,20 @@ var ReactInstanceMap = require('ReactInstanceMap');
 
 var invariant = require('invariant');
 
-var IndeterminateComponent = 0; // Before we know whether it is functional or class
-var FunctionalComponent = 1;
-var ClassComponent = 2;
-var HostRoot = 3; // Root of a host tree. Could be nested inside another node.
-var HostPortal = 4; // A subtree. Could be an entry point to a different renderer.
-var HostComponent = 5;
-var HostText = 6;
-var CoroutineComponent = 7;
-var CoroutineHandlerPhase = 8;
-var YieldComponent = 9;
-var Fragment = 10;
-
-var  NoEffect= 0;                                // 0b000000
-  var Placement= 1;                               // 0b000001
-  var Update= 2;                                  // 0b000010
-  var PlacementAndUpdate= 3;                      // 0b000011
-  var Deletion= 4;                                // 0b000100
-  var ContentReset= 8;                            // 0b001000
-  var Callback= 16;                               // 0b010000
-  var Err= 32;                                    // 0b100000
-
 // FiberTreeReflection
-
-var MOUNTING = 1;
-var MOUNTED = 2;
-var UNMOUNTED = 3;
 
 function isFiberMountedImpl(fiber : Fiber) : number {
   let node = fiber;
   if (!fiber.alternate) {
     // If there is no alternate, this might be a new tree that isn't inserted
     // yet. If it is, then it will have a pending insertion effect on it.
-    if ((node.effectTag & Placement) !== NoEffect) {
-      return MOUNTING;
+    if ((node.effectTag & 1) !== 0) {
+      return 1;
     }
     while (node.return) {
       node = node.return;
-      if ((node.effectTag & Placement) !== NoEffect) {
-        return MOUNTING;
+      if ((node.effectTag & 1) !== 0) {
+        return 1;
       }
     }
   } else {
@@ -2317,17 +2285,17 @@ function isFiberMountedImpl(fiber : Fiber) : number {
       node = node.return;
     }
   }
-  if (node.tag === HostRoot) {
-    // TODO: Check if this was a nested HostRoot when used with
+  if (node.tag === 3) {
+    // TODO: Check if this was a nested 3 when used with
     // renderContainerIntoSubtree.
-    return MOUNTED;
+    return 2;
   }
   // If we didn't hit the root, that means that we're in an disconnected tree
   // that has been unmounted.
-  return UNMOUNTED;
+  return 3;
 }
 function isFiberMounted(fiber : Fiber) : boolean {
-  return isFiberMountedImpl(fiber) === MOUNTED;
+  return isFiberMountedImpl(fiber) === 2;
 };
 
 function isMounted(component : ReactComponent<any, any, any>) : boolean {
@@ -2335,12 +2303,12 @@ function isMounted(component : ReactComponent<any, any, any>) : boolean {
   if (!fiber) {
     return false;
   }
-  return isFiberMountedImpl(fiber) === MOUNTED;
+  return isFiberMountedImpl(fiber) === 2;
 };
 
 function assertIsMounted(fiber) {
   invariant(
-    isFiberMountedImpl(fiber) === MOUNTED,
+    isFiberMountedImpl(fiber) === 2,
     'Unable to find node on an unmounted component.'
   );
 }
@@ -2351,10 +2319,10 @@ function findCurrentFiberUsingSlowPath(fiber : Fiber) : Fiber | null {
     // If there is no alternate, then we only need to check if it is mounted.
     const state = isFiberMountedImpl(fiber);
     invariant(
-      state !== UNMOUNTED,
+      state !== 3,
       'Unable to find node on an unmounted component.'
     );
-    if (state === MOUNTING) {
+    if (state === 1) {
       return null;
     }
     return fiber;
@@ -2408,7 +2376,7 @@ function findCurrentFiberUsingSlowPath(fiber : Fiber) : Fiber | null {
   // If the root is not a host container, we're in a disconnected tree. I.e.
   // unmounted.
   invariant(
-    a.tag === HostRoot,
+    a.tag === 3,
     'Unable to find node on an unmounted component.'
   );
   if (a.stateNode.current === a) {
@@ -2425,10 +2393,10 @@ function findCurrentHostFiber(parent : Fiber) : Fiber | null {
     return null;
   }
 
-  // Next we'll drill down this component to find the first HostComponent/Text.
+  // Next we'll drill down this component to find the first 5/Text.
   let node : Fiber = currentParent;
   while (true) {
-    if (node.tag === HostComponent || node.tag === HostText) {
+    if (node.tag === 5 || node.tag === 6) {
       return node;
     } else if (node.child) {
       // TODO: If we hit a Portal, we're supposed to skip it.
@@ -2472,7 +2440,7 @@ var warning = require('warning');
 var invariant = require('invariant');
 
 
-  // ClassComponent 
+  // 2 
 
   function scheduleUpdateQueue(fiber: Fiber, updateQueue: UpdateQueue) {
     fiber.updateQueue = updateQueue;
@@ -2954,7 +2922,7 @@ var invariant = require('invariant');
       // We special case a direct text child of a host node. This is a common
       // case. We won't handle it as a reified child. We will instead handle
       // this in the host environment that also have access to this prop. That
-      // avoids allocating another HostText fiber and traversing it.
+      // avoids allocating another 6 fiber and traversing it.
       nextChildren = null;
     } else if (
       prevProps &&
@@ -2962,10 +2930,10 @@ var invariant = require('invariant');
     ) {
       // If we're switching from a direct text child to a normal child, or to
       // empty, we need to schedule the text content to be reset.
-      workInProgress.effectTag |= ContentReset;
+      workInProgress.effectTag |= 8;
     }
     if (nextProps.hidden &&
-        workInProgress.pendingWorkPriority !== OffscreenPriority) {
+        workInProgress.pendingWorkPriority !== 6) {
       // If this host component is hidden, we can bail out on the children.
       // We'll rerender the children later at the lower priority.
 
@@ -2974,14 +2942,14 @@ var invariant = require('invariant');
       // they are not actually done yet. If this is a large set it is also
       // confusing that this takes time to do right now instead of later.
 
-      if (workInProgress.progressedPriority === OffscreenPriority) {
+      if (workInProgress.progressedPriority === 6) {
         // If we already made some progress on the offscreen priority before,
         // then we should continue from where we left off.
         workInProgress.child = workInProgress.progressedChild;
       }
 
       // Reconcile the children and stash them for later work.
-      reconcileChildrenAtPriority(current, workInProgress, nextChildren, OffscreenPriority);
+      reconcileChildrenAtPriority(current, workInProgress, nextChildren, 6);
       workInProgress.child = current ? current.child : null;
 
       if (!current) {
@@ -2992,7 +2960,7 @@ var invariant = require('invariant');
         // TODO: There has to be a better solution to this problem.
         let child = workInProgress.progressedChild;
         while (child) {
-          child.effectTag = Placement;
+          child.effectTag = 1;
           child = child.sibling;
         }
       }
@@ -3025,14 +2993,14 @@ var invariant = require('invariant');
 
     if (typeof value === 'object' && value && typeof value.render === 'function') {
       // Proceed under the assumption that this is a class instance
-      workInProgress.tag = ClassComponent;
+      workInProgress.tag = 2;
       adoptClassInstance(workInProgress, value);
       mountClassInstance(workInProgress);
       ReactCurrentOwner.current = workInProgress;
       value = value.render();
     } else {
       // Proceed under the assumption that this is a functional component
-      workInProgress.tag = FunctionalComponent;
+      workInProgress.tag = 1;
     }
     reconcileChildren(current, workInProgress, value);
     return workInProgress.child;
@@ -3088,11 +3056,11 @@ var invariant = require('invariant');
 
   function bailoutOnAlreadyFinishedWork(current, workInProgress : Fiber) : ?Fiber {
     const priorityLevel = workInProgress.pendingWorkPriority;
-    const isHostComponent = workInProgress.tag === HostComponent;
+    const isHostComponent = workInProgress.tag === 5;
 
     if (isHostComponent &&
         workInProgress.memoizedProps.hidden &&
-        workInProgress.pendingWorkPriority !== OffscreenPriority) {
+        workInProgress.pendingWorkPriority !== 6) {
       // This subtree still has work, but it should be deprioritized so we need
       // to bail out and not do any work yet.
       // TODO: It would be better if this tree got its correct priority set
@@ -3104,7 +3072,7 @@ var invariant = require('invariant');
       while (child) {
         // To ensure that this subtree gets its priority reset, the children
         // need to be reset.
-        child.pendingWorkPriority = OffscreenPriority;
+        child.pendingWorkPriority = 6;
         child = child.sibling;
       }
       return null;
@@ -3138,13 +3106,13 @@ var invariant = require('invariant');
       pushHostContext(workInProgress);
     } else {
       switch (workInProgress.tag) {
-        case ClassComponent:
+        case 2:
           if (isContextProvider(workInProgress)) {
             pushContextProvider(workInProgress, false);
           }
           break;
-        case HostRoot:
-        case HostPortal:
+        case 3:
+        case 4:
           pushHostContainer(workInProgress.stateNode.containerInfo);
           break;
       }
@@ -3155,7 +3123,7 @@ var invariant = require('invariant');
   }
 
   function bailoutOnLowPriority(current, workInProgress) {
-    if (workInProgress.tag === HostPortal) {
+    if (workInProgress.tag === 4) {
       pushHostContainer(workInProgress.stateNode.containerInfo);
     }
     // TODO: What if this is currently in progress?
@@ -3170,7 +3138,7 @@ var invariant = require('invariant');
       resetHostContainer();
     }
 
-    if (workInProgress.pendingWorkPriority === NoWork ||
+    if (workInProgress.pendingWorkPriority === 0 ||
         workInProgress.pendingWorkPriority > priorityLevel) {
       return bailoutOnLowPriority(current, workInProgress);
     }
@@ -3196,13 +3164,13 @@ var invariant = require('invariant');
     }
 
     switch (workInProgress.tag) {
-      case IndeterminateComponent:
+      case 0:
         return mountIndeterminateComponent(current, workInProgress);
-      case FunctionalComponent:
+      case 1:
         return updateFunctionalComponent(current, workInProgress);
-      case ClassComponent:
+      case 2:
         return updateClassComponent(current, workInProgress);
-      case HostRoot: {
+      case 3: {
         const root = (workInProgress.stateNode : FiberRoot);
         if (root.pendingContext) {
           pushTopLevelContextObject(
@@ -3218,30 +3186,30 @@ var invariant = require('invariant');
         // next one immediately.
         return workInProgress.child;
       }
-      case HostComponent:
+      case 5:
         return updateHostComponent(current, workInProgress);
-      case HostText:
+      case 6:
         // Nothing to do here. This is terminal. We'll do the completion step
         // immediately after.
         return null;
-      case CoroutineHandlerPhase:
+      case 8:
         // This is a restart. Reset the tag to the initial phase.
-        workInProgress.tag = CoroutineComponent;
+        workInProgress.tag = 7;
         // Intentionally fall through since this is now the same.
-      case CoroutineComponent:
+      case 7:
         updateCoroutineComponent(current, workInProgress);
         // This doesn't take arbitrary time so we could synchronously just begin
         // eagerly do the work of workInProgress.child as an optimization.
         return workInProgress.child;
-      case YieldComponent:
+      case 9:
         // A yield component is just a placeholder, we can just run through the
         // next one immediately.
         return null;
-      case HostPortal:
+      case 4:
         pushHostContainer(workInProgress.stateNode.containerInfo);
         updatePortalComponent(current, workInProgress);
         return workInProgress.child;
-      case Fragment:
+      case 10:
         updateFragment(current, workInProgress);
         return workInProgress.child;
       default:
@@ -3250,15 +3218,15 @@ var invariant = require('invariant');
   }
 
   function beginFailedWork(current : ?Fiber, workInProgress : Fiber, priorityLevel : PriorityLevel) {
-    if (workInProgress.tag !== ClassComponent &&
-        workInProgress.tag !== HostRoot) {
+    if (workInProgress.tag !== 2 &&
+        workInProgress.tag !== 3) {
       throw new Error('Invalid type of work');
     }
 
     // Add an error effect so we can handle the error during the commit phase
-    workInProgress.effectTag |= Err;
+    workInProgress.effectTag |= 32;
 
-    if (workInProgress.pendingWorkPriority === NoWork ||
+    if (workInProgress.pendingWorkPriority === 0 ||
         workInProgress.pendingWorkPriority > priorityLevel) {
       return bailoutOnLowPriority(current, workInProgress);
     }
@@ -3398,8 +3366,8 @@ var invariant = require('invariant');
 
   // The priority level to use when scheduling an update.
   let priorityContext : PriorityLevel = useSyncScheduling ?
-    SynchronousPriority :
-    LowPriority;
+    1 :
+    5;
 
   // Keeps track of whether we're currently in a work loop. Used to batch
   // nested updates.
@@ -3407,7 +3375,7 @@ var invariant = require('invariant');
 
   // The next work in progress fiber that we're currently working on.
   let nextUnitOfWork : ?Fiber = null;
-  let nextPriorityLevel : PriorityLevel = NoWork;
+  let nextPriorityLevel : PriorityLevel = 0;
 
   // The next fiber with an effect, during the commit phase.
   let nextEffect : ?Fiber = null;
@@ -3453,7 +3421,7 @@ var invariant = require('invariant');
 
   function findNextUnitOfWork() {
     // Clear out roots with no more work on them, or if they have uncaught errors
-    while (nextScheduledRoot && nextScheduledRoot.current.pendingWorkPriority === NoWork) {
+    while (nextScheduledRoot && nextScheduledRoot.current.pendingWorkPriority === 0) {
       // Unschedule this root.
       nextScheduledRoot.isScheduled = false;
       // Read the next pointer now.
@@ -3464,7 +3432,7 @@ var invariant = require('invariant');
       if (nextScheduledRoot === lastScheduledRoot) {
         nextScheduledRoot = null;
         lastScheduledRoot = null;
-        nextPriorityLevel = NoWork;
+        nextPriorityLevel = 0;
         return null;
       }
       // Continue with the next root.
@@ -3474,10 +3442,10 @@ var invariant = require('invariant');
 
     let root = nextScheduledRoot;
     let highestPriorityRoot = null;
-    let highestPriorityLevel = NoWork;
+    let highestPriorityLevel = 0;
     while (root) {
-      if (root.current.pendingWorkPriority !== NoWork && (
-          highestPriorityLevel === NoWork ||
+      if (root.current.pendingWorkPriority !== 0 && (
+          highestPriorityLevel === 0 ||
           highestPriorityLevel > root.current.pendingWorkPriority)) {
         highestPriorityLevel = root.current.pendingWorkPriority;
         highestPriorityRoot = root;
@@ -3493,13 +3461,13 @@ var invariant = require('invariant');
       );
     }
 
-    nextPriorityLevel = NoWork;
+    nextPriorityLevel = 0;
     return null;
   }
 
   function commitAllHostEffects(finishedWork : Fiber) {
     while (nextEffect) {
-      if (nextEffect.effectTag & ContentReset) {
+      if (nextEffect.effectTag & 8) {
         config.resetTextContent(nextEffect.stateNode);
       }
 
@@ -3507,36 +3475,36 @@ var invariant = require('invariant');
       // updates, and deletions. To avoid needing to add a case for every
       // possible bitmap value, we remove the secondary effects from the
       // effect tag and switch on that value.
-      let primaryEffectTag = nextEffect.effectTag & ~(Callback | Err | ContentReset);
+      let primaryEffectTag = nextEffect.effectTag & ~(16 | 32 | 8);
       switch (primaryEffectTag) {
-        case Placement: {
+        case 1: {
           commitPlacement(nextEffect);
           // Clear the "placement" from effect tag so that we know that this is inserted, before
           // any life-cycles like componentDidMount gets called.
           // TODO: findDOMNode doesn't rely on this any more but isMounted
           // does and isMounted is deprecated anyway so we should be able
           // to kill this.
-          nextEffect.effectTag &= ~Placement;
+          nextEffect.effectTag &= ~1;
           break;
         }
-        case PlacementAndUpdate: {
-          // Placement
+        case 3: {
+          // 1
           commitPlacement(nextEffect);
           // Clear the "placement" from effect tag so that we know that this is inserted, before
           // any life-cycles like componentDidMount gets called.
-          nextEffect.effectTag &= ~Placement;
+          nextEffect.effectTag &= ~1;
 
-          // Update
+          // 2
           const current = nextEffect.alternate;
           commitWork(current, nextEffect);
           break;
         }
-        case Update: {
+        case 2: {
           const current = nextEffect.alternate;
           commitWork(current, nextEffect);
           break;
         }
-        case Deletion: {
+        case 4: {
           isUnmounting = true;
           commitDeletion(nextEffect);
           isUnmounting = false;
@@ -3548,7 +3516,7 @@ var invariant = require('invariant');
 
     // If the root itself had an effect, we perform that since it is
     // not part of the effect list.
-    if (finishedWork.effectTag !== NoEffect) {
+    if (finishedWork.effectTag !== 0) {
       const current = finishedWork.alternate;
       commitWork(current, finishedWork);
     }
@@ -3558,11 +3526,11 @@ var invariant = require('invariant');
     while (nextEffect) {
       const current = nextEffect.alternate;
       // Use Task priority for lifecycle updates
-      if (nextEffect.effectTag & (Update | Callback)) {
+      if (nextEffect.effectTag & (2 | 16)) {
         commitLifeCycles(current, nextEffect);
       }
 
-      if (nextEffect.effectTag & Err) {
+      if (nextEffect.effectTag & 32) {
         commitErrorHandling(nextEffect);
       }
 
@@ -3579,10 +3547,10 @@ var invariant = require('invariant');
 
     // If the root itself had an effect, we perform that since it is
     // not part of the effect list.
-    if (finishedWork.effectTag !== NoEffect) {
+    if (finishedWork.effectTag !== 0) {
       const current = finishedWork.alternate;
       commitLifeCycles(current, finishedWork);
-      if (finishedWork.effectTag & Err) {
+      if (finishedWork.effectTag & 32) {
         commitErrorHandling(finishedWork);
       }
     }
@@ -3607,7 +3575,7 @@ var invariant = require('invariant');
 
     // Updates that occur during the commit phase should have Task priority
     const previousPriorityContext = priorityContext;
-    priorityContext = TaskPriority;
+    priorityContext = 2;
 
     prepareForCommit();
 
@@ -3667,15 +3635,15 @@ var invariant = require('invariant');
   }
 
   function resetWorkPriority(workInProgress : Fiber) {
-    let newPriority = NoWork;
+    let newPriority = 0;
     // progressedChild is going to be the child set with the highest priority.
     // Either it is the same as child, or it just bailed out because it choose
     // not to do the work.
     let child = workInProgress.progressedChild;
     while (child) {
       // Ensure that remaining work priority bubbles up.
-      if (child.pendingWorkPriority !== NoWork &&
-          (newPriority === NoWork ||
+      if (child.pendingWorkPriority !== 0 &&
+          (newPriority === 0 ||
           newPriority > child.pendingWorkPriority)) {
         newPriority = child.pendingWorkPriority;
       }
@@ -3729,7 +3697,7 @@ var invariant = require('invariant');
         // to schedule our own side-effect on our own list because if end up
         // reusing children we'll schedule this effect onto itself since we're
         // at the end.
-        if (workInProgress.effectTag !== NoEffect) {
+        if (workInProgress.effectTag !== 0) {
           if (returnFiber.lastEffect) {
             returnFiber.lastEffect.nextEffect = workInProgress;
           } else {
@@ -3751,7 +3719,7 @@ var invariant = require('invariant');
         // work, we should commit the completed work immediately. If we are
         // performing deferred work, returning null indicates to the caller
         // that we just completed the root so they can handle that case correctly.
-        if (nextPriorityLevel < HighPriority) {
+        if (nextPriorityLevel < 4) {
           // Otherwise, we should commit immediately.
           commitAllWork(workInProgress);
         } else {
@@ -3811,12 +3779,12 @@ var invariant = require('invariant');
     // We pass the lowest deferred priority here because it acts as a minimum.
     // Higher priorities will also be performed.
     isDeferredCallbackScheduled = false;
-    performWork(OffscreenPriority, deadline);
+    performWork(6, deadline);
   }
 
   function performAnimationWork() {
     isAnimationCallbackScheduled = false;
-    performWork(AnimationPriority);
+    performWork(3);
   }
 
   function clearErrors() {
@@ -3826,8 +3794,8 @@ var invariant = require('invariant');
     // Keep performing work until there are no more errors
     while (capturedErrors && capturedErrors.size &&
            nextUnitOfWork &&
-           nextPriorityLevel !== NoWork &&
-           nextPriorityLevel <= TaskPriority) {
+           nextPriorityLevel !== 0 &&
+           nextPriorityLevel <= 2) {
       if (hasCapturedError(nextUnitOfWork)) {
         // Use a forked version of performUnitOfWork
         nextUnitOfWork = performFailedUnitOfWork(nextUnitOfWork);
@@ -3854,7 +3822,7 @@ var invariant = require('invariant');
 
     // If there's a deadline, and we're not performing Task work, perform work
     // using this loop that checks the deadline on every iteration.
-    if (deadline && priorityLevel > TaskPriority) {
+    if (deadline && priorityLevel > 2) {
       // The deferred work loop will run until there's no time left in
       // the current frame.
       while (nextUnitOfWork && !deadlineHasExpired) {
@@ -3885,7 +3853,7 @@ var invariant = require('invariant');
       // that doesn't check how much time is remaining. It will keep running
       // until we run out of work at this priority level.
       while (nextUnitOfWork &&
-             nextPriorityLevel !== NoWork &&
+             nextPriorityLevel !== 0 &&
              nextPriorityLevel <= priorityLevel) {
         nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
         if (!nextUnitOfWork) {
@@ -3911,8 +3879,8 @@ var invariant = require('invariant');
     // This outer loop exists so that we can restart the work loop after
     // catching an error. It also lets us flush Task work at the end of a
     // deferred batch.
-    while (priorityLevel !== NoWork) {
-      if (priorityLevel >= HighPriority && !deadline) {
+    while (priorityLevel !== 0) {
+      if (priorityLevel >= 4 && !deadline) {
         throw new Error(
           'Cannot perform deferred work without a deadline.'
         );
@@ -3924,9 +3892,9 @@ var invariant = require('invariant');
       // have Task priority.
       if (pendingCommit) {
         const isFlushingTaskWorkInDeferredBatch =
-          priorityLevel === TaskPriority &&
+          priorityLevel === 2 &&
           isPerformingDeferredWork &&
-          pendingCommit.pendingWorkPriority !== TaskPriority;
+          pendingCommit.pendingWorkPriority !== 2;
         if (!isFlushingTaskWorkInDeferredBatch) {
           commitAllWork(pendingCommit);
         }
@@ -3971,11 +3939,11 @@ var invariant = require('invariant');
       }
 
       // Stop performing work
-      priorityLevel = NoWork;
+      priorityLevel = 0;
 
       // If have we more work, and we're in a deferred batch, check to see
       // if the deadline has expired.
-      if (nextPriorityLevel !== NoWork && isPerformingDeferredWork && !deadlineHasExpired) {
+      if (nextPriorityLevel !== 0 && isPerformingDeferredWork && !deadlineHasExpired) {
         // We have more time to do work.
         priorityLevel = nextPriorityLevel;
         continue;
@@ -3984,13 +3952,13 @@ var invariant = require('invariant');
       // There might be work left. Depending on the priority, we should
       // either perform it now or schedule a callback to perform it later.
       switch (nextPriorityLevel) {
-        case SynchronousPriority:
-        case TaskPriority:
+        case 1:
+        case 2:
           // Perform work immediately by switching the priority level
           // and continuing the loop.
           priorityLevel = nextPriorityLevel;
           break;
-        case AnimationPriority:
+        case 3:
           scheduleAnimationCallback(performAnimationWork);
           // Even though the next unit of work has animation priority, there
           // may still be deferred work left over as well. I think this is
@@ -3998,9 +3966,9 @@ var invariant = require('invariant');
           // would be scheduled during the next animation frame.
           scheduleDeferredCallback(performDeferredWork);
           break;
-        case HighPriority:
-        case LowPriority:
-        case OffscreenPriority:
+        case 4:
+        case 5:
+        case 6:
           scheduleDeferredCallback(performDeferredWork);
           break;
       }
@@ -4032,12 +4000,12 @@ var invariant = require('invariant');
       // Host containers are a special case. If the failed work itself is a host
       // container, then it acts as its own boundary. In all other cases, we
       // ignore the work itself and only search through the parents.
-      if (failedWork.tag === HostRoot) {
+      if (failedWork.tag === 3) {
         boundary = failedWork;
       } else {
         let node = failedWork.return;
         while (node && !boundary) {
-          if (node.tag === ClassComponent) {
+          if (node.tag === 2) {
             const instance = node.stateNode;
             if (typeof instance.unstable_handleError === 'function') {
               if (isFailedBoundary(node)) {
@@ -4068,7 +4036,7 @@ var invariant = require('invariant');
                 boundary = node;
               }
             }
-          } else if (node.tag === HostRoot) {
+          } else if (node.tag === 3) {
             // Treat the root like a no-op error boundary.
             boundary = node;
           }
@@ -4104,7 +4072,7 @@ var invariant = require('invariant');
       } else {
         // Otherwise, schedule an update now. Error recovery has Task priority.
         const previousPriorityContext = priorityContext;
-        priorityContext = TaskPriority;
+        priorityContext = 2;
         scheduleUpdate(boundary);
         priorityContext = previousPriorityContext;
       }
@@ -4150,13 +4118,13 @@ var invariant = require('invariant');
     }
 
     switch (effectfulFiber.tag) {
-      case ClassComponent:
+      case 2:
         const instance = effectfulFiber.stateNode;
         // Allow the boundary to handle the error, usually by scheduling
         // an update to itself
         instance.unstable_handleError(error);
         return;
-      case HostRoot:
+      case 3:
         if (!firstUncaughtError) {
           // If this is the host container, we treat it as a no-op error
           // boundary. We'll throw the first uncaught error once it's safe to
@@ -4173,13 +4141,13 @@ var invariant = require('invariant');
     let node = from;
     while (node && (node !== to) && (node.alternate !== to)) {
       switch (node.tag) {
-        case HostComponent:
+        case 5:
           popHostContext(node);
           break;
-        case HostRoot:
+        case 3:
           popHostContainer();
           break;
-        case HostPortal:
+        case 4:
           popHostContainer();
           break;
       }
@@ -4191,8 +4159,8 @@ var invariant = require('invariant');
     let priorityLevel = priorityContext;
 
     // If we're in a batch, switch to task priority
-    if (priorityLevel === SynchronousPriority && isPerformingWork) {
-      priorityLevel = TaskPriority;
+    if (priorityLevel === 1 && isPerformingWork) {
+      priorityLevel = 2;
     }
 
     scheduleWorkAtPriority(root, priorityLevel);
@@ -4200,12 +4168,12 @@ var invariant = require('invariant');
 
   function scheduleWorkAtPriority(root : FiberRoot, priorityLevel : PriorityLevel) {
     // Set the priority on the root, without deprioritizing
-    if (root.current.pendingWorkPriority === NoWork ||
+    if (root.current.pendingWorkPriority === 0 ||
         priorityLevel <= root.current.pendingWorkPriority) {
       root.current.pendingWorkPriority = priorityLevel;
     }
     if (root.current.alternate) {
-      if (root.current.alternate.pendingWorkPriority === NoWork ||
+      if (root.current.alternate.pendingWorkPriority === 0 ||
           priorityLevel <= root.current.alternate.pendingWorkPriority) {
         root.current.alternate.pendingWorkPriority = priorityLevel;
       }
@@ -4234,23 +4202,23 @@ var invariant = require('invariant');
     // Depending on the priority level, either perform work now or schedule
     // a callback to perform work later.
     switch (priorityLevel) {
-      case SynchronousPriority:
+      case 1:
         // Perform work immediately
-        performWork(SynchronousPriority);
+        performWork(1);
         return;
-      case TaskPriority:
+      case 2:
         // If we're already performing work, Task work will be flushed before
         // exiting the current batch. So we can skip it here.
         if (!isPerformingWork) {
-          performWork(TaskPriority);
+          performWork(2);
         }
         return;
-      case AnimationPriority:
+      case 3:
         scheduleAnimationCallback(performAnimationWork);
         return;
-      case HighPriority:
-      case LowPriority:
-      case OffscreenPriority:
+      case 4:
+      case 5:
+      case 6:
         scheduleDeferredCallback(performDeferredWork);
         return;
     }
@@ -4259,8 +4227,8 @@ var invariant = require('invariant');
   function scheduleUpdate(fiber : Fiber) {
     let priorityLevel = priorityContext;
     // If we're in a batch, downgrade sync priority to task priority
-    if (priorityLevel === SynchronousPriority && isPerformingWork) {
-      priorityLevel = TaskPriority;
+    if (priorityLevel === 1 && isPerformingWork) {
+      priorityLevel = 2;
     }
 
     let node = fiber;
@@ -4270,22 +4238,22 @@ var invariant = require('invariant');
       // we reach a node whose priority matches (and whose alternate's priority
       // matches) we can exit safely knowing that the rest of the path is correct.
       shouldContinue = false;
-      if (node.pendingWorkPriority === NoWork ||
+      if (node.pendingWorkPriority === 0 ||
           node.pendingWorkPriority >= priorityLevel) {
-        // Priority did not match. Update and keep going.
+        // Priority did not match. 2 and keep going.
         shouldContinue = true;
         node.pendingWorkPriority = priorityLevel;
       }
       if (node.alternate) {
-        if (node.alternate.pendingWorkPriority === NoWork ||
+        if (node.alternate.pendingWorkPriority === 0 ||
             node.alternate.pendingWorkPriority >= priorityLevel) {
-          // Priority did not match. Update and keep going.
+          // Priority did not match. 2 and keep going.
           shouldContinue = true;
           node.alternate.pendingWorkPriority = priorityLevel;
         }
       }
       if (!node.return) {
-        if (node.tag === HostRoot) {
+        if (node.tag === 3) {
           const root : FiberRoot = (node.stateNode : any);
           scheduleWorkAtPriority(root, priorityLevel);
         } else {
@@ -4318,14 +4286,14 @@ var invariant = require('invariant');
       // If we're not already performing work, we need to flush any task work
       // that was created by the user-provided function.
       if (!isPerformingWork) {
-        performWork(TaskPriority);
+        performWork(2);
       }
     }
   }
 
   function syncUpdates<A>(fn : () => A) : A {
     const previousPriorityContext = priorityContext;
-    priorityContext = SynchronousPriority;
+    priorityContext = 1;
     try {
       return fn();
     } finally {
@@ -4801,7 +4769,7 @@ function updateDOMProperties(
             styleUpdates[styleName] = '';
           }
         }
-        // Update styles that changed since `lastProp`.
+        // 2 styles that changed since `lastProp`.
         for (styleName in nextProp) {
           if (nextProp.hasOwnProperty(styleName) &&
               lastProp[styleName] !== nextProp[styleName]) {
@@ -5116,7 +5084,7 @@ function getIntrinsicNamespace(type : string) : string | null {
 
     switch (tag) {
       case 'input':
-        // Update the wrapper around inputs *after* updating props. This has to
+        // 2 the wrapper around inputs *after* updating props. This has to
         // happen after `updateDOMProperties`. Otherwise HTML5 input validations
         // raise warnings and prevent the new value from being assigned.
         ReactDOMFiberInput.updateWrapper(domElement, nextRawProps);
@@ -5240,7 +5208,7 @@ let selectionInformation : ?mixed = null;
     // let the renderer "normalize" the fiber type so we don't have to read
     // the type from DOM. However we need to remember SVG is case-sensitive.
     var tag = domElement.tagName.toLowerCase();
-    // Update the internal instance handle so that we know which props are
+    // 2 the internal instance handle so that we know which props are
     // the current ones.
     precacheFiberNode(internalInstanceHandle, domElement);
     updateProperties(domElement, tag, oldProps, newProps, rootContainerInstance);
@@ -5292,7 +5260,6 @@ let selectionInformation : ?mixed = null;
 
   var hostScheduleDeferredCallback = window.requestIdleCallback;
 
-  var useSyncScheduling = true;
 
 
 ReactGenericBatching.injection.injectFiberBatchedUpdates(batchedUpdates);
