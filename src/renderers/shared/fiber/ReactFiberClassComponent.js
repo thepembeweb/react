@@ -347,7 +347,9 @@ module.exports = function(scheduleUpdate : (fiber: Fiber) => void) {
       newState,
       newContext
     )) {
-      // TODO: Should this get the new props/state updated regardless?
+      instance.props = newProps;
+      instance.state = newState;
+      instance.context = newContext;
       return false;
     }
 

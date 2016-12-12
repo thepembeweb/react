@@ -36,6 +36,7 @@ scripts/error-codes/__tests__/invertObject-test.js
 
 src/addons/__tests__/ReactComponentWithPureRenderMixin-test.js
 * provides a default shouldComponentUpdate implementation
+* does not do a deep comparison
 
 src/addons/__tests__/ReactFragment-test.js
 * warns for numeric keys on objects as children
@@ -499,7 +500,6 @@ src/renderers/dom/__tests__/ReactDOMProduction-test.js
 * should use prod fbjs
 * should use prod React
 * should handle a simple flow
-* should call lifecycle methods
 
 src/renderers/dom/fiber/__tests__/ReactDOMFiber-test.js
 * should render strings as children
@@ -1096,7 +1096,6 @@ src/renderers/shared/fiber/__tests__/ReactIncremental-test.js
 * uses state set in componentWillMount even if initial render was aborted
 * calls componentWill* twice if an update render is aborted
 * does not call componentWillReceiveProps for state-only updates
-* skips will/DidUpdate when bailing unless an update was already in progress
 * performs batched updates at the end of the batch
 * can nest batchedUpdates
 * can handle if setState callback throws
@@ -1307,6 +1306,7 @@ src/renderers/shared/shared/__tests__/ReactCompositeComponent-test.js
 * should trigger componentWillReceiveProps for context changes
 * only renders once if updated in componentWillReceiveProps
 * only renders once if updated in componentWillReceiveProps when batching
+* should update refs if shouldComponentUpdate gives false
 * should allow access to findDOMNode in componentWillUnmount
 * context should be passed down from the parent
 * should replace state
