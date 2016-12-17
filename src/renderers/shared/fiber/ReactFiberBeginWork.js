@@ -407,6 +407,8 @@ module.exports = function<T, P, I, TI, C, CX>(
       // priority reconciliation first before we can get down here. However,
       // that is a bit tricky since workInProgress and current can have
       // different "hidden" settings.
+      // TODO: there is a test in ReactDOMFiber-test that uses `hidden` attribute.
+      // If we change the API for deprioritization we must change that test too.
       let child = workInProgress.progressedChild;
       while (child) {
         // To ensure that this subtree gets its priority reset, the children
