@@ -15,6 +15,8 @@
 import type { Fiber } from 'ReactFiber';
 import type { HostConfig } from 'ReactFiberReconciler';
 
+import warning from 'warning';
+
 export type HostContext<C, CX> = {
   getRootHostContainer() : C,
   getHostContext() : CX | null,
@@ -127,6 +129,13 @@ module.exports = function<T, P, I, TI, C, CX>(
       throw new Error('Expected host context stacks to exist when index is more than -1.');
     }
     if (fiber !== contextFibers[contextDepth]) {
+      if (__DEV__) {
+        const nextContextValue = getChildHostContext(currentContextValue, fiber.type);
+        warning(
+          currentContextValue === nextContextValue,
+          'Expected host providing context to have been pushed',
+        );
+      }
       return;
     }
 
