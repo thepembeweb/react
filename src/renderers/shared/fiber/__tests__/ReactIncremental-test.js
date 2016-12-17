@@ -1839,8 +1839,8 @@ describe('ReactIncremental', () => {
     );
     ReactNoop.flush();
     expect(ops).toEqual([
-      'Intl:read {}',
       'Intl:provide {"locale":"fr"}',
+      'Intl:read {}',
       'IndirectionFn {}',
       'IndirectionClass {}',
       'ShowLocaleClass:read {"locale":"fr"}',
@@ -1931,8 +1931,8 @@ describe('ReactIncremental', () => {
     );
     ReactNoop.flush();
     expect(ops).toEqual([
-      'Intl:read {}',
       'Intl:provide {"locale":"fr"}',
+      'Intl:read {}',
       'IndirectionFn {}',
       'IndirectionClass {}',
       'ShowLocaleClass:read {"locale":"fr"}',

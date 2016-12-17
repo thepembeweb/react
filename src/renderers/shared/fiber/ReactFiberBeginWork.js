@@ -36,6 +36,7 @@ var {
   hasContextChanged,
   pushContextProvider,
   pushTopLevelContextObject,
+  recomputeCurrentContext,
   resetContext,
 } = require('ReactFiberContext');
 var {
@@ -214,6 +215,11 @@ module.exports = function<T, P, I, TI, C, CX>(
         // In the initial pass we might need to construct the instance.
         constructClassInstance(workInProgress);
         mountClassInstance(workInProgress, priorityLevel);
+        // Now that the instance exists, we may push the context if necessary.
+        // In other cases it should have been pushed before any bailouts.
+        if (isContextProvider(workInProgress)) {
+          pushContextProvider(workInProgress);
+        }
         shouldUpdate = true;
       } else {
         // In a resume, we'll already have an instance we can reuse.
@@ -244,9 +250,9 @@ module.exports = function<T, P, I, TI, C, CX>(
     ReactCurrentOwner.current = workInProgress;
     const nextChildren = instance.render();
     reconcileChildren(current, workInProgress, nextChildren);
-    // Put context on the stack because we will work on children
+    // Mark context as potentially changed
     if (isContextProvider(workInProgress)) {
-      pushContextProvider(workInProgress, true);
+      recomputeCurrentContext(workInProgress);
     }
     return workInProgress.child;
   }
@@ -335,6 +341,11 @@ module.exports = function<T, P, I, TI, C, CX>(
       workInProgress.tag = ClassComponent;
       adoptClassInstance(workInProgress, value);
       mountClassInstance(workInProgress, priorityLevel);
+      // Now that the instance exists, we may push the context if necessary.
+      // In other cases it should have been pushed before any bailouts.
+      if (isContextProvider(workInProgress)) {
+        pushContextProvider(workInProgress);
+      }
       ReactCurrentOwner.current = workInProgress;
       value = value.render();
     } else {
@@ -454,8 +465,10 @@ module.exports = function<T, P, I, TI, C, CX>(
   function pushContextIfNecessary(workInProgress : Fiber) {
     switch (workInProgress.tag) {
       case ClassComponent:
-        if (isContextProvider(workInProgress)) {
-          pushContextProvider(workInProgress, false);
+        // Special case: we cannot push context provider before the instance is created.
+        // This is why there are two other pushContextProvider() calls in this file.
+        if (workInProgress.stateNode != null && isContextProvider(workInProgress)) {
+          pushContextProvider(workInProgress);
         }
         break;
       case HostPortal:
@@ -485,6 +498,7 @@ module.exports = function<T, P, I, TI, C, CX>(
       resetContext();
       resetHostContainer();
     }
+    // console.log('begin wrok')
     // Push context before any bailouts.
     pushContextIfNecessary(workInProgress);
 

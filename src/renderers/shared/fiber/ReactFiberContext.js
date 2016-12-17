@@ -116,13 +116,13 @@ function processChildContext(fiber : Fiber, parentContext : Object, isReconcilin
 }
 exports.processChildContext = processChildContext;
 
-exports.pushContextProvider = function(workInProgress : Fiber, didPerformWork : boolean) : void {
+exports.pushContextProvider = function(workInProgress : Fiber) : void {
   const instance = workInProgress.stateNode;
   const memoizedMergedChildContext = instance.__reactInternalMemoizedMergedChildContext;
-  const canReuseMergedChildContext = !didPerformWork && memoizedMergedChildContext != null;
+  const canReuse = memoizedMergedChildContext != null;
 
   let mergedContext = null;
-  if (canReuseMergedChildContext) {
+  if (canReuse) {
     mergedContext = memoizedMergedChildContext;
   } else {
     mergedContext = processChildContext(workInProgress, getUnmaskedContext(), true);
@@ -131,7 +131,19 @@ exports.pushContextProvider = function(workInProgress : Fiber, didPerformWork : 
 
   index++;
   contextStack[index] = mergedContext;
-  didPerformWorkStack[index] = didPerformWork;
+  didPerformWorkStack[index] = !canReuse;
+};
+
+exports.recomputeCurrentContext = function(workInProgress : Fiber) : void {
+  invariant(index > -1, 'Cannot recompute context with no context on the stack.');
+  if (didPerformWorkStack[index]) {
+    return;
+  }
+  const instance = workInProgress.stateNode;
+  const mergedContext = processChildContext(workInProgress, contextStack[index - 1], true);
+  contextStack[index] = mergedContext;
+  instance.__reactInternalMemoizedMergedChildContext = mergedContext;
+  didPerformWorkStack[index] = true;
 };
 
 exports.resetContext = function() : void {
