@@ -12,6 +12,7 @@
 
 'use strict';
 
+const NativeMethodsMixin = require('NativeMethodsMixin');
 const ReactFiberErrorLogger = require('ReactFiberErrorLogger');
 const ReactFiberReconciler = require('ReactFiberReconciler');
 const ReactGenericBatching = require('ReactGenericBatching');
@@ -439,7 +440,24 @@ const ReactNative = {
   },
 
   unstable_batchedUpdates: ReactGenericBatching.batchedUpdates,
+
+  // Expose some internals from the flat bundle.
+  // Ideally we should trim this list down as we remove those dependencies.
+  __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: {
+    createReactNativeComponentClass: require('createReactNativeComponentClass'),
+    findNodeHandle: require('findNodeHandle'),
+    NativeMethodsMixin: require('NativeMethodsMixin'),
+    PooledClass: require('PooledClass'),
+    ReactErrorUtils: require('ReactErrorUtils'),
+    ReactNativeComponentTree: require('ReactNativeComponentTree'),
+    ReactNativePropRegistry: require('ReactNativePropRegistry'),
+    TouchHistoryMath: require('TouchHistoryMath'),
+  },
 };
+
+// Work around circular dependencies
+NativeMethodsMixin.__injectReactNative(ReactNative);
+takeSnapshot.__injectReactNative(ReactNative);
 
 if (typeof injectInternals === 'function') {
   injectInternals({

@@ -11,6 +11,7 @@
  */
 'use strict';
 
+var NativeMethodsMixin = require('NativeMethodsMixin');
 var ReactNativeComponentTree = require('ReactNativeComponentTree');
 var ReactNativeInjection = require('ReactNativeInjection');
 var ReactNativeMount = require('ReactNativeMount');
@@ -56,6 +57,21 @@ var ReactNative = {
   /* eslint-enable camelcase */
 
   unmountComponentAtNodeAndRemoveContainer: ReactNativeMount.unmountComponentAtNodeAndRemoveContainer,
+
+  // Expose some internals from the flat bundle.
+  // Ideally we should trim this list down as we remove those dependencies.
+  __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: {
+    createReactNativeComponentClass: require('createReactNativeComponentClass'),
+    findNodeHandle: require('findNodeHandle'),
+    NativeMethodsMixin: require('NativeMethodsMixin'),
+    PooledClass: require('PooledClass'),
+    ReactDebugTool: require('ReactDebugTool'),
+    ReactErrorUtils: require('ReactErrorUtils'),
+    ReactNativeComponentTree: require('ReactNativeComponentTree'),
+    ReactNativePropRegistry: require('ReactNativePropRegistry'),
+    ReactPerf: require('ReactPerf'),
+    TouchHistoryMath: require('TouchHistoryMath'),
+  },
 };
 
 // Inject the runtime into a devtools global hook regardless of browser.
@@ -86,5 +102,12 @@ if (
     Reconciler: require('ReactReconciler'),
   });
 }
+
+// Work around circular dependencies
+NativeMethodsMixin.__injectReactNative(ReactNative);
+takeSnapshot.__injectReactNative(ReactNative);
+require('createReactNativeComponentClass').__injectStackReactNativeBaseComponent(
+  require('ReactNativeBaseComponent')
+);
 
 module.exports = ReactNative;

@@ -12,9 +12,18 @@
 
 'use strict';
 
-const ReactNativeBaseComponent = require('ReactNativeBaseComponent');
 const ReactNativeFeatureFlags = require('ReactNativeFeatureFlags');
 const ReactNativeViewConfigRegistry = require('ReactNativeViewConfigRegistry');
+const invariant = require('fbjs/lib/invariant');
+const emptyFunction = require('fbjs/lib/emptyFunction');
+
+// This injection is only necessary to avoid pulling Stack into Fiber flat bundle.
+// TODO: remove this when Stack is gone.
+let ReactNativeBaseComponent = emptyFunction;
+function injectStackReactNativeBaseComponent(BaseComponent) {
+  invariant(typeof BaseComponent === 'function', 'Expected BaseComponent to be a component class.');
+  ReactNativeBaseComponent = BaseComponent;
+}
 
 // See also ReactNativeBaseComponent
 type ReactNativeBaseComponentViewConfig = {
@@ -57,6 +66,10 @@ const createReactNativeComponentClass = function(
   return ((Constructor: any): ReactClass<any>);
 };
 
-module.exports = ReactNativeFeatureFlags.useFiber
-  ? createReactNativeFiberComponentClass
-  : createReactNativeComponentClass;
+if (ReactNativeFeatureFlags.useFiber) {
+  module.exports = createReactNativeFiberComponentClass;
+} else {
+  createReactNativeComponentClass.__injectStackReactNativeBaseComponent =
+    injectStackReactNativeBaseComponent;
+  module.exports = createReactNativeComponentClass;
+}
