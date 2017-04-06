@@ -2,8 +2,8 @@
   "branch": "master",
   "bundleSizes": {
     "react.development.js (UMD_DEV)": {
-      "size": 116402,
-      "gzip": 29598
+      "size": 116439,
+      "gzip": 29606
     },
     "react.production.min.js (UMD_PROD)": {
       "size": 13719,
@@ -34,8 +34,8 @@
       "gzip": 28976
     },
     "react.development.js (NODE_DEV)": {
-      "size": 109416,
-      "gzip": 27554
+      "size": 109453,
+      "gzip": 27562
     },
     "react.production.min.js (NODE_PROD)": {
       "size": 12615,
