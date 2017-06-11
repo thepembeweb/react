@@ -26,7 +26,6 @@ var SyntheticUIEvent = require('SyntheticUIEvent');
 var SyntheticWheelEvent = require('SyntheticWheelEvent');
 
 var getEventCharCode = require('getEventCharCode');
-var invariant = require('fbjs/lib/invariant');
 
 import type {TopLevelTypes} from 'BrowserEventConstants';
 import type {
@@ -153,41 +152,6 @@ var SimpleEventPlugin: PluginModule<MouseEvent> = {
     }
     var EventConstructor;
     switch (topLevelType) {
-      case 'topAbort':
-      case 'topCancel':
-      case 'topCanPlay':
-      case 'topCanPlayThrough':
-      case 'topClose':
-      case 'topDurationChange':
-      case 'topEmptied':
-      case 'topEncrypted':
-      case 'topEnded':
-      case 'topError':
-      case 'topInput':
-      case 'topInvalid':
-      case 'topLoad':
-      case 'topLoadedData':
-      case 'topLoadedMetadata':
-      case 'topLoadStart':
-      case 'topPause':
-      case 'topPlay':
-      case 'topPlaying':
-      case 'topProgress':
-      case 'topRateChange':
-      case 'topReset':
-      case 'topSeeked':
-      case 'topSeeking':
-      case 'topStalled':
-      case 'topSubmit':
-      case 'topSuspend':
-      case 'topTimeUpdate':
-      case 'topToggle':
-      case 'topVolumeChange':
-      case 'topWaiting':
-        // HTML Events
-        // @see http://www.w3.org/TR/html5/index.html#events-0
-        EventConstructor = SyntheticEvent;
-        break;
       case 'topKeyPress':
         // Firefox creates a keypress event for function keys too. This removes
         // the unwanted keypress events. Enter is however both printable and
@@ -257,12 +221,12 @@ var SimpleEventPlugin: PluginModule<MouseEvent> = {
       case 'topPaste':
         EventConstructor = SyntheticClipboardEvent;
         break;
+      default:
+        // HTML Events
+        // @see http://www.w3.org/TR/html5/index.html#events-0
+        EventConstructor = SyntheticEvent;
+        break;
     }
-    invariant(
-      EventConstructor,
-      'SimpleEventPlugin: Unhandled event type, `%s`.',
-      topLevelType,
-    );
     var event = EventConstructor.getPooled(
       dispatchConfig,
       targetInst,
