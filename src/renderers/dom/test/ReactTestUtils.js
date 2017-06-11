@@ -475,12 +475,7 @@ function makeSimulator(eventType) {
     event.persist();
     Object.assign(event, eventData);
 
-    if (dispatchConfig.phasedRegistrationNames) {
-      EventPropagators.accumulateTwoPhaseDispatches(event);
-    } else {
-      EventPropagators.accumulateDirectDispatches(event);
-    }
-
+    EventPropagators.accumulateTwoPhaseDispatches(event);
     ReactDOM.unstable_batchedUpdates(function() {
       // Normally extractEvent enqueues a state restore, but we'll just always
       // do that since we we're by-passing it here.

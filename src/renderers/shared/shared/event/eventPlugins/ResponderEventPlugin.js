@@ -62,10 +62,7 @@ var eventTypes = {
    * responder?
    */
   startShouldSetResponder: {
-    phasedRegistrationNames: {
-      bubbled: 'onStartShouldSetResponder',
-      captured: 'onStartShouldSetResponderCapture',
-    },
+    registrationName: 'onStartShouldSetResponder',
   },
 
   /**
@@ -78,10 +75,7 @@ var eventTypes = {
    * TODO: This shouldn't bubble.
    */
   scrollShouldSetResponder: {
-    phasedRegistrationNames: {
-      bubbled: 'onScrollShouldSetResponder',
-      captured: 'onScrollShouldSetResponderCapture',
-    },
+    registrationName: 'onScrollShouldSetResponder',
   },
 
   /**
@@ -92,10 +86,7 @@ var eventTypes = {
    * TODO: This shouldn't bubble.
    */
   selectionChangeShouldSetResponder: {
-    phasedRegistrationNames: {
-      bubbled: 'onSelectionChangeShouldSetResponder',
-      captured: 'onSelectionChangeShouldSetResponderCapture',
-    },
+    registrationName: 'onSelectionChangeShouldSetResponder',
   },
 
   /**
@@ -103,10 +94,7 @@ var eventTypes = {
    * responder?
    */
   moveShouldSetResponder: {
-    phasedRegistrationNames: {
-      bubbled: 'onMoveShouldSetResponder',
-      captured: 'onMoveShouldSetResponderCapture',
-    },
+    registrationName: 'onMoveShouldSetResponder',
   },
 
   /**

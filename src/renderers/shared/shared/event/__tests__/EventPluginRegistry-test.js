@@ -154,10 +154,7 @@ describe('EventPluginRegistry', () => {
     var TwoPlugin = createPlugin({
       eventTypes: {
         magic: {
-          phasedRegistrationNames: {
-            bubbled: 'onMagicBubble',
-            captured: 'onMagicCapture',
-          },
+          registrationName: 'onMagic',
         },
       },
     });
@@ -176,7 +173,7 @@ describe('EventPluginRegistry', () => {
     expect(
       Object.keys(EventPluginRegistry.registrationNameModules).length,
     ).toBe(4);
-    expect(EventPluginRegistry.registrationNameModules.onMagicBubble).toBe(
+    expect(EventPluginRegistry.registrationNameModules.onMagic).toBe(
       TwoPlugin,
     );
     expect(EventPluginRegistry.registrationNameModules.onMagicCapture).toBe(
@@ -193,10 +190,7 @@ describe('EventPluginRegistry', () => {
     var TwoPlugin = createPlugin({
       eventTypes: {
         photo: {
-          phasedRegistrationNames: {
-            bubbled: 'onPhotoBubble',
-            captured: 'onPhotoCapture',
-          },
+          registrationName: 'onPhoto',
         },
       },
     });

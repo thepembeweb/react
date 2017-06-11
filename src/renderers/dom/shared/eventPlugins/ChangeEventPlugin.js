@@ -26,10 +26,7 @@ var isTextInputElement = require('isTextInputElement');
 
 var eventTypes = {
   change: {
-    phasedRegistrationNames: {
-      bubbled: 'onChange',
-      captured: 'onChangeCapture',
-    },
+    registrationName: 'onChange',
     dependencies: [
       'topBlur',
       'topChange',

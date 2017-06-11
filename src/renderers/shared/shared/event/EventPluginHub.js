@@ -87,7 +87,7 @@ function shouldPreventMouseEvent(name, type, props) {
  *   `eventTypes` {object}
  *     Optional, plugins that fire events must publish a mapping of registration
  *     names that are used to register listeners. Values of this mapping must
- *     be objects that contain `registrationName` or `phasedRegistrationNames`.
+ *     be objects that contain `registrationName`.
  *
  *   `executeDispatch` {function(object, function, string)}
  *     Optional, allows plugins to override how an event gets dispatched. By

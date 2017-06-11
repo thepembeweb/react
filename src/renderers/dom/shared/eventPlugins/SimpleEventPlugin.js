@@ -41,10 +41,7 @@ import type {EventTypes, PluginModule} from 'PluginModuleType';
  * into
  * eventTypes = {
  *   'abort': {
- *     phasedRegistrationNames: {
- *       bubbled: 'onAbort',
- *       captured: 'onAbortCapture',
- *     },
+ *     registrationName: 'onAbort',
  *     dependencies: ['topAbort'],
  *   },
  *   ...
@@ -127,10 +124,7 @@ var topLevelEventsToDispatchConfig: {[key: TopLevelTypes]: DispatchConfig} = {};
   var topEvent = 'top' + capitalizedEvent;
 
   var type = {
-    phasedRegistrationNames: {
-      bubbled: onEvent,
-      captured: onEvent + 'Capture',
-    },
+    registrationName: onEvent,
     dependencies: [topEvent],
   };
   eventTypes[event] = type;

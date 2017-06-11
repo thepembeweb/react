@@ -157,40 +157,22 @@ var RCTUIManager = {
   __takeSnapshot: jest.fn(),
   customBubblingEventTypes: {
     topBlur: {
-      phasedRegistrationNames: {
-        bubbled: 'onBlur',
-        captured: 'onBlurCapture',
-      },
+      registrationName: 'onBlur',
     },
     topFocus: {
-      phasedRegistrationNames: {
-        bubbled: 'onFocus',
-        captured: 'onFocusCapture',
-      },
+      registrationName: 'onFocus',
     },
     topTouchCancel: {
-      phasedRegistrationNames: {
-        bubbled: 'onTouchCancel',
-        captured: 'onTouchCancelCapture',
-      },
+      registrationName: 'onTouchCancel',
     },
     topTouchEnd: {
-      phasedRegistrationNames: {
-        bubbled: 'onTouchEnd',
-        captured: 'onTouchEndCapture',
-      },
+      registrationName: 'onTouchEnd',
     },
     topTouchMove: {
-      phasedRegistrationNames: {
-        bubbled: 'onTouchMove',
-        captured: 'onTouchMoveCapture',
-      },
+      registrationName: 'onTouchMove',
     },
     topTouchStart: {
-      phasedRegistrationNames: {
-        bubbled: 'onTouchStart',
-        captured: 'onTouchStartCapture',
-      },
+      registrationName: 'onTouchStart',
     },
   },
   customDirectEventTypes: {

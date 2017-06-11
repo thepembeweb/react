@@ -30,10 +30,7 @@ var skipSelectionChangeEvent =
 
 var eventTypes = {
   select: {
-    phasedRegistrationNames: {
-      bubbled: 'onSelect',
-      captured: 'onSelectCapture',
-    },
+    registrationName: 'onSelect',
     dependencies: [
       'topBlur',
       'topContextMenu',

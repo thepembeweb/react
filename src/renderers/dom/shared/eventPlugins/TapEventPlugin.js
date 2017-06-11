@@ -94,10 +94,7 @@ var dependencies = ['topMouseDown', 'topMouseMove', 'topMouseUp'].concat(
 
 var eventTypes = {
   touchTap: {
-    phasedRegistrationNames: {
-      bubbled: 'onTouchTap',
-      captured: 'onTouchTapCapture',
-    },
+    registrationName: 'onTouchTap',
     dependencies: dependencies,
   },
 };

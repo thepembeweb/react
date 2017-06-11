@@ -18,10 +18,6 @@ import type {ReactInstance} from 'ReactInstanceType';
 
 export type DispatchConfig = {
   dependencies: Array<string>,
-  phasedRegistrationNames?: {
-    bubbled: string,
-    captured: string,
-  },
   registrationName?: string,
 };
 
