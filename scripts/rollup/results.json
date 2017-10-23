@@ -17,12 +17,12 @@
       "gzip": 2364
     },
     "React-dev.js (FB_DEV)": {
-      "size": 43033,
-      "gzip": 11331
+      "size": 43312,
+      "gzip": 11383
     },
     "React-prod.js (FB_PROD)": {
-      "size": 24848,
-      "gzip": 6713
+      "size": 24898,
+      "gzip": 6737
     },
     "react-dom.development.js (UMD_DEV)": {
       "size": 628227,

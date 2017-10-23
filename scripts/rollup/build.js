@@ -340,6 +340,7 @@ function getUglifyConfig(configs) {
 function getPlugins(
   entry,
   externalPackages,
+  forkedModules,
   updateBabelOptions,
   filename,
   bundleType,
@@ -348,18 +349,16 @@ function getPlugins(
   modulesToStub,
   featureFlags
 ) {
+  const aliasConfig = Modules.getModuleAliases(bundleType, entry)
   const plugins = [
-    alias(
-      Modules.getModuleAliases(bundleType, entry),
-    ),
     resolvePlugin({
       // TODO: 3.0 of this plugin removed this option :-( but it seems essential.
-      skip: externalPackages
+      skip: externalPackages,
     }),
     babel(getBabelConfig(updateBabelOptions, bundleType)),
   ];
   const commonJsConfig = {
-    ignore: Modules.getIgnoredModules(bundleType),
+    ignore: forkedModules,
   };
   const headerSanityCheck = getHeaderSanityCheck(bundleType, globalName);
   switch (bundleType) {
@@ -396,7 +395,7 @@ function getPlugins(
         replace(stripEnvVariables(true)),
         commonjs(commonJsConfig),
         uglify(
-          uglifyConfig({
+          getUglifyConfig({
             mangle: bundleType !== FB_PROD,
             preserveVersionHeader: bundleType === UMD_PROD,
             // leave comments in for source map debugging purposes
@@ -423,6 +422,11 @@ function getPlugins(
       );
       break;
   }
+  // plugins.push(
+  //   alias(
+  //     Modules.getModuleAliases(bundleType, entry),
+  //   ),
+  // );
   plugins.push(
     sizes({
       getSize: (size, gzip) => {
@@ -473,31 +477,29 @@ function createBundle(bundle, bundleType) {
     }
   }
 
+  const shouldBundleThirdPartyDependencies = (bundleType === UMD_DEV || bundleType === UMD_PROD);
+  const thirdPartyDependencies = Modules.getThirdPartyDependencies(bundleType, bundle.entry);
+  const forkedModules = Modules.getForkedModules(bundleType);
   const externalGlobals = Modules.getExternalGlobals(
     bundle.externals,
     bundleType,
     bundle.moduleType,
     bundle.entry
   );
-  const nodeDependencies = Modules.getNodeDependencies(
-    bundle.entry
-  );
 
-  let externalPackages = Object.keys(externalGlobals);
-  if (bundleType === NODE_DEV || bundleType === NODE_PROD) {
-    externalPackages = externalPackages.concat(nodeDependencies);
+  let externalPackages = Object.keys(externalGlobals)//.concat(forkedModules);
+  if (!shouldBundleThirdPartyDependencies) {
+    externalPackages = externalPackages.concat(thirdPartyDependencies);
   }
 
   console.log(`${chalk.bgYellow.black(' BUILDING ')} ${logKey}`);
   return rollup({
     entry: resolvedEntry,
     external(id) {
-      if (bundleType === NODE_DEV || bundleType === NODE_PROD) {
-        if (externalPackages.some(
-          dep => id === dep || id.startsWith(dep + '/')
-        )) {
-          return true;
-        }
+      const containsThisModule = packageName => id === packageName || id.startsWith(packageName + '/');
+      const isInThirdPartyModule = externalPackages.some(containsThisModule) || forkedModules.indexOf(id) !== -1;
+      if (!shouldBundleThirdPartyDependencies && isInThirdPartyModule) {
+        return true;
       }
       return externalGlobals[id];
     },
@@ -505,6 +507,7 @@ function createBundle(bundle, bundleType) {
     plugins: getPlugins(
       bundle.entry,
       externalPackages,
+      forkedModules,
       bundle.babel,
       filename,
       bundleType,

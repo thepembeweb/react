@@ -17,10 +17,22 @@ const RN_PROD = bundleTypes.RN_PROD;
 const ISOMORPHIC = moduleTypes.ISOMORPHIC;
 const RENDERER = moduleTypes.RENDERER;
 
-const knownExternalGlobals = {
+// Bundles exporting globals that other modules rely on.
+const knownExternalGlobals = Object.freeze({
   'react': 'React',
   'react-dom': 'ReactDOM',
-};
+});
+
+// Redirect some modules to Haste forks in www.
+const forkedFBModules = Object.freeze({
+  // At FB, we don't know them statically:
+  'shared/ReactFeatureFlags': 'ReactFeatureFlags',
+  // This logic is also forked internally.
+  'shared/lowPriorityWarning': 'lowPriorityWarning',
+  // In FB bundles, we preserve an inline require to ReactCurrentOwner.
+  // See the explanation in FB version of ReactCurrentOwner in www:
+  'react/src/ReactCurrentOwner': 'ReactCurrentOwner',
+});
 
 function getExternalGlobals(externals, bundleType, moduleType, entry) {
   const externalGlobals = {};
@@ -38,13 +50,13 @@ function getExternalGlobals(externals, bundleType, moduleType, entry) {
   return externalGlobals;
 }
 
-function getNodeDependencies(entry) {
+function getThirdPartyDependencies(bundleType, entry) {
   const packageJson = require(
     path.basename(path.dirname(require.resolve(entry))) + '/package.json'
   );
   return Array.from(new Set([
     ...Object.keys(packageJson.dependencies || {}),
-    ...Object.keys(packageJson.peerDependencies || {})
+    ...Object.keys(packageJson.peerDependencies || {}),
   ]));
 }
 
@@ -52,7 +64,7 @@ function getModuleAliases(bundleType, entry) {
   switch (bundleType) {
     case UMD_DEV:
     case UMD_PROD:
-      if (getNodeDependencies(entry).indexOf('react') !== -1) {
+      if (getThirdPartyDependencies(entry).indexOf('react') !== -1) {
         // Optimization: rely on object-assign polyfill that is already a part
         // of the React package instead of bundling it again.
         return {
@@ -60,19 +72,28 @@ function getModuleAliases(bundleType, entry) {
         };
       }
       return {};
+    case FB_DEV:
+    case FB_PROD:
+      // TODO: validate
+      return forkedFBModules;
     default:
       return {};
   }
 }
 
-function getIgnoredModules(bundleType) {
-  // TODO
-  return [];
+function getForkedModules(bundleType) {
+  switch (bundleType) {
+    case FB_DEV:
+    case FB_PROD:
+      return Object.keys(forkedFBModules);
+    default:
+      return [];
+  }
 }
 
 module.exports = {
   getExternalGlobals,
-  getNodeDependencies,
-  getIgnoredModules,
+  getThirdPartyDependencies,
+  getForkedModules,
   getModuleAliases,
 };
