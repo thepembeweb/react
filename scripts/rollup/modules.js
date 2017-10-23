@@ -75,7 +75,11 @@ function getModuleAliases(bundleType, entry) {
     case FB_DEV:
     case FB_PROD:
       // TODO: validate
-      return forkedFBModules;
+      let aliases = {};
+      Object.keys(forkedFBModules).forEach(key => {
+        aliases[require.resolve(key)] = forkedFBModules[key];
+      })
+      return aliases;
     default:
       return {};
   }
@@ -85,7 +89,7 @@ function getForkedModules(bundleType) {
   switch (bundleType) {
     case FB_DEV:
     case FB_PROD:
-      return Object.keys(forkedFBModules);
+      return Object.values(forkedFBModules);
     default:
       return [];
   }

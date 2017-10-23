@@ -340,7 +340,6 @@ function getUglifyConfig(configs) {
 function getPlugins(
   entry,
   externalPackages,
-  forkedModules,
   updateBabelOptions,
   filename,
   bundleType,
@@ -351,6 +350,9 @@ function getPlugins(
 ) {
   const aliasConfig = Modules.getModuleAliases(bundleType, entry)
   const plugins = [
+    alias(
+      aliasConfig
+    ),
     resolvePlugin({
       // TODO: 3.0 of this plugin removed this option :-( but it seems essential.
       skip: externalPackages,
@@ -358,7 +360,6 @@ function getPlugins(
     babel(getBabelConfig(updateBabelOptions, bundleType)),
   ];
   const commonJsConfig = {
-    ignore: forkedModules,
   };
   const headerSanityCheck = getHeaderSanityCheck(bundleType, globalName);
   switch (bundleType) {
@@ -422,11 +423,6 @@ function getPlugins(
       );
       break;
   }
-  // plugins.push(
-  //   alias(
-  //     Modules.getModuleAliases(bundleType, entry),
-  //   ),
-  // );
   plugins.push(
     sizes({
       getSize: (size, gzip) => {
@@ -479,15 +475,15 @@ function createBundle(bundle, bundleType) {
 
   const shouldBundleThirdPartyDependencies = (bundleType === UMD_DEV || bundleType === UMD_PROD);
   const thirdPartyDependencies = Modules.getThirdPartyDependencies(bundleType, bundle.entry);
-  const forkedModules = Modules.getForkedModules(bundleType);
   const externalGlobals = Modules.getExternalGlobals(
     bundle.externals,
     bundleType,
     bundle.moduleType,
     bundle.entry
   );
+  const forkedModules = Modules.getForkedModules(bundleType)
 
-  let externalPackages = Object.keys(externalGlobals)//.concat(forkedModules);
+  let externalPackages = Object.keys(externalGlobals).concat(forkedModules);
   if (!shouldBundleThirdPartyDependencies) {
     externalPackages = externalPackages.concat(thirdPartyDependencies);
   }
@@ -497,7 +493,7 @@ function createBundle(bundle, bundleType) {
     entry: resolvedEntry,
     external(id) {
       const containsThisModule = packageName => id === packageName || id.startsWith(packageName + '/');
-      const isInThirdPartyModule = externalPackages.some(containsThisModule) || forkedModules.indexOf(id) !== -1;
+      const isInThirdPartyModule = externalPackages.some(containsThisModule);
       if (!shouldBundleThirdPartyDependencies && isInThirdPartyModule) {
         return true;
       }
@@ -507,7 +503,6 @@ function createBundle(bundle, bundleType) {
     plugins: getPlugins(
       bundle.entry,
       externalPackages,
-      forkedModules,
       bundle.babel,
       filename,
       bundleType,
