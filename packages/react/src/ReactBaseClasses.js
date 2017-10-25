@@ -11,7 +11,10 @@ var ReactNoopUpdateQueue = require('./ReactNoopUpdateQueue');
 
 var emptyObject = require('fbjs/lib/emptyObject');
 var invariant = require('fbjs/lib/invariant');
-var lowPriorityWarning = require('shared/lowPriorityWarning');
+
+if (__DEV__) {
+  var lowPriorityWarning = require('shared/lowPriorityWarning');
+}
 
 /**
  * Base class helpers for the updating state of a component.
