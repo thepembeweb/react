@@ -15,17 +15,48 @@ import type {FiberRoot} from './ReactFiberRoot';
 import type {HydrationContext} from './ReactFiberHydrationContext';
 import type {ExpirationTime} from './ReactFiberExpirationTime';
 
+import ReactFiberComponentTreeHook from 'shared/ReactFiberComponentTreeHook';
+import ReactErrorUtils from 'shared/ReactErrorUtils';
+import ReactGlobalSharedState from 'shared/ReactGlobalSharedState';
+import ReactTypeOfSideEffect from 'shared/ReactTypeOfSideEffect';
+import ReactTypeOfWork from 'shared/ReactTypeOfWork';
+import getComponentName from 'shared/getComponentName';
+import invariant from 'fbjs/lib/invariant';
+import warning from 'fbjs/lib/warning';
+
+import ReactFiberBeginWork from './ReactFiberBeginWork';
+import ReactFiberCompleteWork from './ReactFiberCompleteWork';
+import ReactFiberCommitWork from './ReactFiberCommitWork';
+import ReactFiberHostContext from './ReactFiberHostContext';
+import ReactFiberHydrationContext from './ReactFiberHydrationContext';
+import ReactFiberInstrumentation from './ReactFiberInstrumentation';
+import ReactDebugCurrentFiber from './ReactDebugCurrentFiber';
+import ReactDebugFiberPerf from './ReactDebugFiberPerf';
+import {popContextProvider} from './ReactFiberContext';
+import {reset} from './ReactFiberStack';
+import {logCapturedError} from './ReactFiberErrorLogger';
+import {createWorkInProgress} from './ReactFiber';
+import {onCommitRoot} from './ReactFiberDevToolsHook';
+import {
+  NoWork,
+  Sync,
+  Never,
+  msToExpirationTime,
+  computeExpirationBucket,
+} from './ReactFiberExpirationTime';
+import {AsyncUpdates} from './ReactTypeOfInternalContext';
+import {getUpdateExpirationTime} from './ReactFiberUpdateQueue';
+import {resetContext} from './ReactFiberContext';
+
+// TODO: named imports
+var {getStackAddendumByWorkInProgressFiber} = ReactFiberComponentTreeHook;
 var {
-  getStackAddendumByWorkInProgressFiber,
-} = require('shared/ReactFiberComponentTreeHook');
-var {
-  wrapEventListener,
   invokeGuardedCallback,
   hasCaughtError,
   clearCaughtError,
-} = require('shared/ReactErrorUtils');
-var {ReactCurrentOwner} = require('shared/ReactGlobalSharedState');
-var getComponentName = require('shared/getComponentName');
+  wrapEventListener,
+} = ReactErrorUtils;
+var {ReactCurrentOwner} = ReactGlobalSharedState;
 var {
   PerformedWork,
   Placement,
@@ -36,35 +67,23 @@ var {
   Callback,
   Err,
   Ref,
-} = require('shared/ReactTypeOfSideEffect');
+} = ReactTypeOfSideEffect;
+var {HostRoot, HostComponent, HostPortal, ClassComponent} = ReactTypeOfWork;
 var {
-  HostRoot,
-  HostComponent,
-  HostPortal,
-  ClassComponent,
-} = require('shared/ReactTypeOfWork');
-var invariant = require('fbjs/lib/invariant');
-
-var ReactFiberBeginWork = require('./ReactFiberBeginWork');
-var ReactFiberCompleteWork = require('./ReactFiberCompleteWork');
-var ReactFiberCommitWork = require('./ReactFiberCommitWork');
-var ReactFiberHostContext = require('./ReactFiberHostContext');
-var ReactFiberHydrationContext = require('./ReactFiberHydrationContext');
-var {popContextProvider} = require('./ReactFiberContext');
-const {reset} = require('./ReactFiberStack');
-var {logCapturedError} = require('./ReactFiberErrorLogger');
-var {createWorkInProgress} = require('./ReactFiber');
-var {onCommitRoot} = require('./ReactFiberDevToolsHook');
-var {
-  NoWork,
-  Sync,
-  Never,
-  msToExpirationTime,
-  computeExpirationBucket,
-} = require('./ReactFiberExpirationTime');
-var {AsyncUpdates} = require('./ReactTypeOfInternalContext');
-var {getUpdateExpirationTime} = require('./ReactFiberUpdateQueue');
-var {resetContext} = require('./ReactFiberContext');
+  recordEffect,
+  recordScheduleUpdate,
+  startWorkTimer,
+  stopWorkTimer,
+  stopFailedWorkTimer,
+  startWorkLoopTimer,
+  stopWorkLoopTimer,
+  startCommitTimer,
+  stopCommitTimer,
+  startCommitHostEffectsTimer,
+  stopCommitHostEffectsTimer,
+  startCommitLifeCyclesTimer,
+  stopCommitLifeCyclesTimer,
+} = ReactDebugFiberPerf;
 
 export type CapturedError = {
   componentName: ?string,
@@ -81,26 +100,6 @@ export type HandleErrorInfo = {
 };
 
 if (__DEV__) {
-  var warning = require('fbjs/lib/warning');
-
-  var ReactFiberInstrumentation = require('./ReactFiberInstrumentation');
-  var ReactDebugCurrentFiber = require('./ReactDebugCurrentFiber');
-  var {
-    recordEffect,
-    recordScheduleUpdate,
-    startWorkTimer,
-    stopWorkTimer,
-    stopFailedWorkTimer,
-    startWorkLoopTimer,
-    stopWorkLoopTimer,
-    startCommitTimer,
-    stopCommitTimer,
-    startCommitHostEffectsTimer,
-    stopCommitHostEffectsTimer,
-    startCommitLifeCyclesTimer,
-    stopCommitLifeCyclesTimer,
-  } = require('./ReactDebugFiberPerf');
-
   var didWarnAboutStateTransition = false;
   var didWarnSetStateChildContext = false;
   var didWarnStateUpdateForUnmountedComponent = {};
@@ -150,7 +149,7 @@ if (__DEV__) {
   };
 }
 
-module.exports = function<T, P, I, TI, PI, C, CC, CX, PL>(
+export default function<T, P, I, TI, PI, C, CC, CX, PL>(
   config: HostConfig<T, P, I, TI, PI, C, CC, CX, PL>,
 ) {
   const hostContext = ReactFiberHostContext(config);
@@ -1648,4 +1647,4 @@ module.exports = function<T, P, I, TI, PI, C, CC, CX, PL>(
     flushSync,
     deferredUpdates,
   };
-};
+}
