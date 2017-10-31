@@ -7,15 +7,17 @@
 
 'use strict';
 
-var ReactGenericBatching = require('events/ReactGenericBatching');
-var ReactErrorUtils = require('shared/ReactErrorUtils');
-var ReactFiberTreeReflection = require('shared/ReactFiberTreeReflection');
-var ReactTypeOfWork = require('shared/ReactTypeOfWork');
-var warning = require('fbjs/lib/warning');
-var {HostRoot} = ReactTypeOfWork;
+import ReactGenericBatching from 'events/ReactGenericBatching';
+import ReactErrorUtils from 'shared/ReactErrorUtils';
+import ReactFiberTreeReflection from 'shared/ReactFiberTreeReflection';
+import ReactTypeOfWork from 'shared/ReactTypeOfWork';
+import warning from 'fbjs/lib/warning';
 
-var getEventTarget = require('./getEventTarget');
-var ReactDOMComponentTree = require('../client/ReactDOMComponentTree');
+import getEventTarget from './getEventTarget';
+import ReactDOMComponentTree from '../client/ReactDOMComponentTree';
+
+// TODO: named import
+var {HostRoot} = ReactTypeOfWork;
 
 var CALLBACK_BOOKKEEPING_POOL_SIZE = 10;
 var callbackBookkeepingPool = [];
@@ -214,4 +216,4 @@ var ReactDOMEventListener = {
   },
 };
 
-module.exports = ReactDOMEventListener;
+export default ReactDOMEventListener;
