@@ -178,11 +178,11 @@ describe('ReactIncrementalScheduling', () => {
 
       componentDidMount() {
         ReactNoop.deferredUpdates(() => {
-          ReactNoop.yield(
+          ReactNoop.yieldValue(
             'componentDidMount (before setState): ' + this.state.tick,
           );
           this.setState({tick: 1});
-          ReactNoop.yield(
+          ReactNoop.yieldValue(
             'componentDidMount (after setState): ' + this.state.tick,
           );
         });
@@ -190,13 +190,13 @@ describe('ReactIncrementalScheduling', () => {
 
       componentDidUpdate() {
         ReactNoop.deferredUpdates(() => {
-          ReactNoop.yield('componentDidUpdate: ' + this.state.tick);
+          ReactNoop.yieldValue('componentDidUpdate: ' + this.state.tick);
           if (this.state.tick === 2) {
-            ReactNoop.yield(
+            ReactNoop.yieldValue(
               'componentDidUpdate (before setState): ' + this.state.tick,
             );
             this.setState({tick: 3});
-            ReactNoop.yield(
+            ReactNoop.yieldValue(
               'componentDidUpdate (after setState): ' + this.state.tick,
             );
           }
@@ -204,7 +204,7 @@ describe('ReactIncrementalScheduling', () => {
       }
 
       render() {
-        ReactNoop.yield('render: ' + this.state.tick);
+        ReactNoop.yieldValue('render: ' + this.state.tick);
         instance = this;
         return <span prop={this.state.tick} />;
       }
@@ -331,11 +331,11 @@ describe('ReactIncrementalScheduling', () => {
     class Foo extends React.Component {
       state = {foo: 'foo'};
       componentWillReceiveProps() {
-        ReactNoop.yield(
+        ReactNoop.yieldValue(
           'has callback before setState: ' + ReactNoop.hasScheduledCallback(),
         );
         this.setState({foo: 'baz'});
-        ReactNoop.yield(
+        ReactNoop.yieldValue(
           'has callback after setState: ' + ReactNoop.hasScheduledCallback(),
         );
       }

@@ -9,10 +9,9 @@
 
 'use strict';
 
-var ReactNativeRenderer = require('./src/ReactNativeRenderer');
+import type {ReactNativeType} from './src/ReactNativeTypes';
+import * as ReactNativeRenderer from './src/ReactNativeRenderer';
 
-// TODO: decide on the top-level export form.
-// This is hacky but makes it work with both Rollup and Jest.
-module.exports = ReactNativeRenderer.default
-  ? ReactNativeRenderer.default
-  : ReactNativeRenderer;
+(ReactNativeRenderer: ReactNativeType);
+
+export * from './src/ReactNativeRenderer';

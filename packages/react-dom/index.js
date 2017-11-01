@@ -9,8 +9,13 @@
 
 'use strict';
 
-var ReactDOM = require('./src/client/ReactDOM');
+import * as ReactDOM from './src/client/ReactDOM';
 
-// TODO: decide on the top-level export form.
-// This is hacky but makes it work with both Rollup and Jest.
-module.exports = ReactDOM.default ? ReactDOM.default : ReactDOM;
+// import {render} from 'react-dom';
+// var {render} = require('react-dom');
+// var ReactDOM = require('react-dom');
+export * from './src/client/ReactDOM';
+
+// import ReactDOM from 'react-dom';
+// var ReactDOM = require('react-dom').default;
+export default ReactDOM;

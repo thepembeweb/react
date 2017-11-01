@@ -21,7 +21,7 @@ describe('ReactNativeCS', () => {
     jest.resetModules();
 
     React = require('react');
-    ReactNativeCS = require('react-cs-renderer');
+    ReactNativeCS = require('react-cs-renderer').default;
   });
 
   it('should be able to create and render a native component', () => {

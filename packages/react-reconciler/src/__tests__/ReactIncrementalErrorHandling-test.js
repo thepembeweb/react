@@ -470,7 +470,7 @@ describe('ReactIncrementalErrorHandling', () => {
   it('should not attempt to recover an unmounting error boundary', () => {
     class Parent extends React.Component {
       componentWillUnmount() {
-        ReactNoop.yield('Parent componentWillUnmount');
+        ReactNoop.yieldValue('Parent componentWillUnmount');
       }
       render() {
         return <Boundary />;
@@ -479,7 +479,7 @@ describe('ReactIncrementalErrorHandling', () => {
 
     class Boundary extends React.Component {
       componentDidCatch(e) {
-        ReactNoop.yield(`Caught error: ${e.message}`);
+        ReactNoop.yieldValue(`Caught error: ${e.message}`);
       }
       render() {
         return <ThrowsOnUnmount />;
@@ -488,7 +488,7 @@ describe('ReactIncrementalErrorHandling', () => {
 
     class ThrowsOnUnmount extends React.Component {
       componentWillUnmount() {
-        ReactNoop.yield('ThrowsOnUnmount componentWillUnmount');
+        ReactNoop.yieldValue('ThrowsOnUnmount componentWillUnmount');
         throw new Error('unmount error');
       }
       render() {
@@ -1137,10 +1137,10 @@ describe('ReactIncrementalErrorHandling', () => {
         this.setState({step: 1});
       }
       componentWillUnmount() {
-        ReactNoop.yield('componentWillUnmount: ' + this.state.step);
+        ReactNoop.yieldValue('componentWillUnmount: ' + this.state.step);
       }
       render() {
-        ReactNoop.yield('render: ' + this.state.step);
+        ReactNoop.yieldValue('render: ' + this.state.step);
         if (this.state.step > 0) {
           throw new Error('oops');
         }

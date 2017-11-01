@@ -9,10 +9,13 @@
 
 'use strict';
 
-var ReactTestRenderer = require('./src/ReactTestRenderer');
+import * as ReactTestRenderer from './src/ReactTestRenderer';
 
-// TODO: decide on the top-level export form.
-// This is hacky but makes it work with both Rollup and Jest.
-module.exports = ReactTestRenderer.default
-  ? ReactTestRenderer.default
-  : ReactTestRenderer;
+// import {create} from 'react-test-renderer';
+// var {create} = require('react-test-renderer');
+// var ReactTestRenderer = require('react-test-renderer');
+export * from './src/ReactTestRenderer';
+
+// import ReactTestRenderer from 'react-test-renderer';
+// var ReactTestRenderer = require('react-test-renderer').default;
+export default ReactTestRenderer;

@@ -167,7 +167,7 @@ describe('ReactIncrementalTriangle', () => {
       }
       render() {
         if (yieldAfterEachRender) {
-          ReactNoop.yield(this);
+          ReactNoop.yieldValue(this);
         }
         const {counter, depth} = this.props;
         if (depth === 0) {

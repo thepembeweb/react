@@ -9,8 +9,8 @@
 
 'use strict';
 
-var ReactNativeCS = require('./src/ReactNativeCS');
+import ReactNativeCS from './src/ReactNativeCS';
 
-// TODO: decide on the top-level export form.
-// This is hacky but makes it work with both Rollup and Jest.
-module.exports = ReactNativeCS.default ? ReactNativeCS.default : ReactNativeCS;
+// import ReactNativeCS from 'react-cs-renderer';
+// var ReactNativeCS = require('react-cs-renderer').default;
+export default ReactNativeCS;

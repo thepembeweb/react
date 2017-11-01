@@ -137,7 +137,7 @@ describe('ReactIncrementalUpdates', () => {
 
     function createUpdate(letter) {
       return () => {
-        ReactNoop.yield(letter);
+        ReactNoop.yieldValue(letter);
         return {
           [letter]: letter,
         };
@@ -186,7 +186,7 @@ describe('ReactIncrementalUpdates', () => {
 
     function createUpdate(letter) {
       return () => {
-        ReactNoop.yield(letter);
+        ReactNoop.yieldValue(letter);
         return {
           [letter]: letter,
         };

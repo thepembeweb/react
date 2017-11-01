@@ -9,10 +9,8 @@
 
 'use strict';
 
-var ReactShallowRenderer = require('./src/ReactShallowRenderer');
+var ReactShallowRenderer = require('./src/ReactShallowRenderer').default;
 
-// TODO: decide on the top-level export form.
-// This is hacky but makes it work with both Rollup and Jest.
-module.exports = ReactShallowRenderer.default
-  ? ReactShallowRenderer.default
-  : ReactShallowRenderer;
+// TODO: can't use ES modules here because existing Node code
+// expects the require() result to be the shallow renderer class.
+module.exports = ReactShallowRenderer;

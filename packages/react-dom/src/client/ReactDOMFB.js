@@ -16,7 +16,7 @@ import * as ReactFiberErrorLogger
 import ReactErrorUtils from 'shared/ReactErrorUtils';
 // TODO: direct imports like some-package/src/* are bad. Fix me.
 
-import ReactDOM from './ReactDOM';
+import * as ReactDOM from './ReactDOM';
 import ReactBrowserEventEmitter from '../events/ReactBrowserEventEmitter';
 import ReactDOMComponentTree from './ReactDOMComponentTree';
 import TapEventPlugin from '../events/TapEventPlugin';
@@ -36,4 +36,4 @@ Object.assign(
   },
 );
 
-module.exports = ReactDOM;
+export * from './ReactDOM';

@@ -9,7 +9,6 @@
 
 'use strict';
 
-import type {ReactNativeRTType} from './ReactNativeRTTypes';
 import type {ReactNodeList} from 'shared/ReactTypes';
 
 // TODO: direct imports like some-package/src/* are bad. Fix me.
@@ -47,8 +46,7 @@ const roots = new Map();
 // trace within the native redbox component.
 ReactFiberErrorLogger.injection.injectDialog(showDialog);
 
-const ReactNativeRTFiber: ReactNativeRTType = {
-  render(element: React$Element<any>, containerTag: any, callback: ?Function) {
+export function render(element: React$Element<any>, containerTag: any, callback: ?Function) {
     let root = roots.get(containerTag);
 
     if (!root) {
@@ -60,9 +58,9 @@ const ReactNativeRTFiber: ReactNativeRTType = {
     ReactNativeRTFiberRenderer.updateContainer(element, root, null, callback);
 
     return ReactNativeRTFiberRenderer.getPublicRootInstance(root);
-  },
+  }
 
-  unmountComponentAtNode(containerTag: number) {
+export function  unmountComponentAtNode(containerTag: number) {
     const root = roots.get(containerTag);
     if (root) {
       // TODO: Is it safe to reset this now or should I wait since this unmount could be deferred?
@@ -70,20 +68,18 @@ const ReactNativeRTFiber: ReactNativeRTType = {
         roots.delete(containerTag);
       });
     }
-  },
+  }
 
-  createPortal(
+export function  createPortal(
     children: ReactNodeList,
     containerTag: number,
     key: ?string = null,
   ) {
     return ReactPortal.createPortal(children, containerTag, null, key);
-  },
+  }
 
-  unstable_batchedUpdates: ReactGenericBatching.batchedUpdates,
-
-  flushSync: ReactNativeRTFiberRenderer.flushSync,
-};
+export const unstable_batchedUpdates = ReactGenericBatching.batchedUpdates;
+export const  flushSync = ReactNativeRTFiberRenderer.flushSync;
 
 injectInternals({
   findFiberByHostInstance: ReactNativeRTComponentTree.getFiberFromTag,
@@ -94,5 +90,3 @@ injectInternals({
   version: ReactVersion,
   rendererPackageName: 'react-rt-renderer',
 });
-
-export default ReactNativeRTFiber;

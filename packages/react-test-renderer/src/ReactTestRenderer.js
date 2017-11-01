@@ -558,8 +558,7 @@ function propsMatch(props: Object, filter: Object): boolean {
   return true;
 }
 
-var ReactTestRendererFiber = {
-  create(element: React$Element<any>, options: TestRendererOptions) {
+export function create(element: React$Element<any>, options: TestRendererOptions) {
     var createNodeMock = defaultTestOptions.createNodeMock;
     if (options && typeof options.createNodeMock === 'function') {
       createNodeMock = options.createNodeMock;
@@ -632,11 +631,8 @@ var ReactTestRendererFiber = {
     );
 
     return entry;
-  },
+  }
 
-  /* eslint-disable camelcase */
-  unstable_batchedUpdates: ReactGenericBatching.batchedUpdates,
-  /* eslint-enable camelcase */
-};
-
-export default ReactTestRendererFiber;
+/* eslint-disable camelcase */
+export const  unstable_batchedUpdates = ReactGenericBatching.batchedUpdates;
+/* eslint-enable camelcase */

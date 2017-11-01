@@ -15,15 +15,15 @@ import {Component, PureComponent, AsyncComponent} from './ReactBaseClasses';
 import {forEach, map, count, toArray, only} from './ReactChildren';
 import ReactCurrentOwner from './ReactCurrentOwner';
 import {
-  createElement,
-  createFactory,
-  cloneElement,
+  createElement as createElementProd,
+  createFactory as createFactoryProd,
+  cloneElement as cloneElementProd,
   isValidElement,
 } from './ReactElement';
 import {
-  createElementWithValidation,
-  createFactoryWithValidation,
-  cloneElementWithValidation,
+  createElementWithValidation as createElementDev,
+  createFactoryWithValidation as createFactoryDev,
+  cloneElementWithValidation as cloneElementDev,
 } from './ReactElementValidator';
 import ReactDebugCurrentFrame from './ReactDebugCurrentFrame';
 
@@ -33,39 +33,35 @@ const REACT_FRAGMENT_TYPE =
     Symbol.for('react.fragment')) ||
   0xeacb;
 
-var React = {
-  Children: {
-    map,
-    forEach,
-    count,
-    toArray,
-    only,
-  },
-
-  Component,
-  PureComponent,
-  unstable_AsyncComponent: AsyncComponent,
-
-  createElement: __DEV__ ? createElementWithValidation : createElement,
-  cloneElement: __DEV__ ? cloneElementWithValidation : cloneElement,
-  createFactory: __DEV__ ? createFactoryWithValidation : createFactory,
-  isValidElement: isValidElement,
-
-  version: ReactVersion,
-
-  __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: {
-    ReactCurrentOwner,
-    // Used by renderers to avoid bundling object-assign twice in UMD bundles:
-    assign,
-  },
+export const Children = {
+  map,
+  forEach,
+  count,
+  toArray,
+  only,
 };
 
-if (ReactFeatureFlags.enableReactFragment) {
-  React.Fragment = REACT_FRAGMENT_TYPE;
-}
+export const createElement = __DEV__ ? createElementDev : createElementProd;
+export const cloneElement = __DEV__ ? cloneElementDev : cloneElementProd;
+export const createFactory = __DEV__ ? createFactoryDev : createFactoryProd;
+
+export {isValidElement, Component, PureComponent};
+
+export const Fragment = ReactFeatureFlags.enableReactFragment
+  ? REACT_FRAGMENT_TYPE
+  : undefined;
+
+export const unstable_AsyncComponent = AsyncComponent;
+export const version = ReactVersion;
+
+export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
+  ReactCurrentOwner,
+  // Used by renderers to avoid bundling object-assign twice in UMD bundles:
+  assign,
+};
 
 if (__DEV__) {
-  Object.assign(React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED, {
+  Object.assign(__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED, {
     // These should not be included in production.
     ReactDebugCurrentFrame,
     // Shim for React DOM 16.0.0 which still destructured (but not used) this.
@@ -73,5 +69,3 @@ if (__DEV__) {
     ReactComponentTreeHook: {},
   });
 }
-
-export default React;

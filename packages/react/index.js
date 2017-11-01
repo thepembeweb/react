@@ -9,8 +9,13 @@
 
 'use strict';
 
-var React = require('./src/React');
+import * as React from './src/React';
 
-// TODO: decide on the top-level export form.
-// This is hacky but makes it work with both Rollup and Jest.
-module.exports = React.default ? React.default : React;
+// import {Component, Children} from 'react';
+// var {Component, Children} = require('react');
+// var React = require('react');
+export * from './src/React';
+
+// import React from 'react';
+// var React = require('react').default;
+export default React;

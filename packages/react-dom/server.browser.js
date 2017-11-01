@@ -9,4 +9,13 @@
 
 'use strict';
 
-module.exports = require('./src/server/ReactDOMServerBrowser');
+import * as ReactDOMServerBrowser from './src/server/ReactDOMServerBrowser';
+
+// import {renderToString} from 'react-dom/server';
+// var {renderToString} = require('react-dom/server');
+// var ReactDOMServerBrowser = require('react-dom/server');
+export * from './src/server/ReactDOMServerBrowser';
+
+// import ReactDOMServerBrowser from 'react-dom/server';
+// var ReactDOMServerBrowser = require('react-dom/server').default;
+export default ReactDOMServerBrowser;

@@ -9,6 +9,13 @@
 
 'use strict';
 
-var ReactART = require('./src/ReactART');
+import * as ReactART from './src/ReactART';
 
-module.exports = ReactART;
+// import {Shape} from 'react-art';
+// var {Shape} = require('react-art');
+// var ReactART = require('react-art');
+export * from './src/ReactART';
+
+// import ReactART from 'react-art';
+// var ReactART = require('react-art').default;
+export default ReactART;

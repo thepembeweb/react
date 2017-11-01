@@ -9,4 +9,6 @@
 
 'use strict';
 
-module.exports = require('./src/ReactCallReturn');
+// import {unstable_createCall} from 'react-call-return';
+// var {unstable_createCall} = require('react-call-return');
+export * from './src/ReactCallReturn';

@@ -9,4 +9,13 @@
 
 'use strict';
 
-module.exports = require('./src/server/ReactDOMServerNode');
+import * as ReactDOMServerNode from './src/server/ReactDOMServerNode';
+
+// import {renderToString} from 'react-dom/server';
+// var {renderToString} = require('react-dom/server');
+// var ReactDOMServerNode = require('react-dom/server');
+export * from './src/server/ReactDOMServerNode';
+
+// import ReactDOMServerNode from 'react-dom/server';
+// var ReactDOMServerNode = require('react-dom/server').default;
+export default ReactDOMServerNode;

@@ -9,8 +9,13 @@
 
 'use strict';
 
-var ReactNativeRT = require('./src/ReactNativeRT');
+import type {ReactNativeRTType} from './src/ReactNativeRTTypes';
 
-// TODO: decide on the top-level export form.
-// This is hacky but makes it work with both Rollup and Jest.
-module.exports = ReactNativeRT.default ? ReactNativeRT.default : ReactNativeRT;
+import * as ReactNativeRT from './src/ReactNativeRT';
+
+(ReactNativeRT: ReactNativeRTType);
+
+// import {render} from 'react-rt-renderer';
+// var {render} = require('react-rt-renderer');
+// var ReactNativeRT = require('react-rt-renderer');
+export * from './src/ReactNativeRT';
