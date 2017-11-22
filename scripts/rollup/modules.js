@@ -81,11 +81,13 @@ function getImportSideEffects() {
 
 // Hijacks some modules for optimization and integration reasons.
 function getShims(bundleType, entry, featureFlags) {
+  const canImportReact =
+    getDependencies(bundleType, entry).indexOf('react') !== -1;
   const shims = {};
   switch (bundleType) {
     case UMD_DEV:
     case UMD_PROD:
-      if (getDependencies(bundleType, entry).indexOf('react') !== -1) {
+      if (canImportReact) {
         // Optimization: rely on object-assign polyfill that is already a part
         // of the React package instead of bundling it again.
         shims['object-assign'] = path.resolve(
@@ -121,6 +123,16 @@ function getShims(bundleType, entry, featureFlags) {
   }
   if (featureFlags) {
     shims['shared/ReactFeatureFlags'] = require.resolve(featureFlags);
+  }
+  if (canImportReact) {
+    // Note: we use the Symbol definitions from React package
+    // instead of defining them again in the renderers.
+    // This helps the problem of React and ReactDOM disagreeing
+    // about the $$typeof values if Symbol polyfill loads between React
+    // and ReactDOM. https://github.com/facebook/react/issues/8379#issuecomment-264858787
+    shims['shared/ReactSymbols'] = path.resolve(
+      __dirname + '/shims/rollup/ReactSymbols.js'
+    );
   }
   return shims;
 }

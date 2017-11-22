@@ -3,12 +3,14 @@
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ *
+ * @flow
  */
 
 import assign from 'object-assign';
 import ReactVersion from 'shared/ReactVersion';
 import {enableReactFragment} from 'shared/ReactFeatureFlags';
-import {REACT_FRAGMENT_TYPE} from 'shared/ReactSymbols';
+import * as ReactSymbols from 'shared/ReactSymbols';
 
 import {Component, PureComponent, AsyncComponent} from './ReactBaseClasses';
 import {forEach, map, count, toArray, only} from './ReactChildren';
@@ -39,6 +41,8 @@ var React = {
   PureComponent,
   unstable_AsyncComponent: AsyncComponent,
 
+  Fragment: enableReactFragment ? ReactSymbols.REACT_FRAGMENT_TYPE : undefined,
+
   createElement: __DEV__ ? createElementWithValidation : createElement,
   cloneElement: __DEV__ ? cloneElementWithValidation : cloneElement,
   createFactory: __DEV__ ? createFactoryWithValidation : createFactory,
@@ -50,21 +54,24 @@ var React = {
     ReactCurrentOwner,
     // Used by renderers to avoid bundling object-assign twice in UMD bundles:
     assign,
+    // Used by renderers to share the Symbol definitions (and avoid issues
+    // when the Symbol polyfill is loaded later than React but earlier than
+    // a renderer). https://github.com/facebook/react/issues/8379#issuecomment-264858787
+    ReactSymbols,
   },
 };
 
-if (enableReactFragment) {
-  React.Fragment = REACT_FRAGMENT_TYPE;
-}
-
 if (__DEV__) {
-  Object.assign(React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED, {
-    // These should not be included in production.
-    ReactDebugCurrentFrame,
-    // Shim for React DOM 16.0.0 which still destructured (but not used) this.
-    // TODO: remove in React 17.0.
-    ReactComponentTreeHook: {},
-  });
+  Object.assign(
+    (React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: any),
+    {
+      // These should not be included in production.
+      ReactDebugCurrentFrame,
+      // Shim for React DOM 16.0.0 which still destructured (but not used) this.
+      // TODO: remove in React 17.0.
+      ReactComponentTreeHook: {},
+    },
+  );
 }
 
 export default React;
