@@ -9,12 +9,20 @@
 
 import * as ReactFiberTreeReflection from 'react-reconciler/reflection';
 import * as ReactInstanceMap from 'shared/ReactInstanceMap';
+import * as EventPluginHub from 'events/EventPluginHub';
 import {addUserTimingListener} from 'shared/ReactFeatureFlags';
+import shouldUseTapEventPlugin from './shouldUseTapEventPlugin';
 
 import ReactDOM from './ReactDOM';
 import * as ReactBrowserEventEmitter from '../events/ReactBrowserEventEmitter';
 import * as ReactDOMComponentTree from './ReactDOMComponentTree';
 import TapEventPlugin from '../events/TapEventPlugin';
+
+if (shouldUseTapEventPlugin) {
+  // TODO: only msite depends on this.
+  // Fix up the call sites so we can delete this.
+  EventPluginHub.injection.injectEventPluginsByName({TapEventPlugin});
+}
 
 Object.assign(
   (ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: any),
@@ -24,8 +32,6 @@ Object.assign(
     ReactFiberTreeReflection,
     ReactDOMComponentTree,
     ReactInstanceMap,
-    // Used by www msite:
-    TapEventPlugin,
     // Perf experiment
     addUserTimingListener,
   },

@@ -101,6 +101,22 @@ const forks = Object.freeze({
         return null;
     }
   },
+
+  // Temporary flag for whether TapEventPlugin needs to be injected in FB bundle.
+  // It's separated into its own module because unlike other flags, it's different
+  // between www and msite, but we don't want to fork the whole www module just
+  // for it. Ideally we'll remove TapEventPlugin from msite altogether soon, and
+  // then this can be removed too.
+  'react-dom/src/client/shouldUseTapEventPlugin': bundleType => {
+    switch (bundleType) {
+      case FB_DEV:
+      case FB_PROD:
+        // Use the www fork which is `true` on msite.
+        return 'react-dom/src/client/forks/shouldUseTapEventPlugin.www.js';
+      default:
+        return null;
+    }
+  },
 });
 
 module.exports = forks;

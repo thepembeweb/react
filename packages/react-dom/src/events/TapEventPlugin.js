@@ -7,24 +7,15 @@
  * @flow
  */
 
+import type {Fiber} from 'react-reconciler/src/ReactFiber';
+
 import {isStartish, isEndish} from 'events/EventPluginUtils';
 import {accumulateTwoPhaseDispatches} from 'events/EventPropagators';
 import TouchEventUtils from 'fbjs/lib/TouchEventUtils';
 
 import SyntheticUIEvent from './SyntheticUIEvent';
 
-/**
- * We are extending the Flow 'Touch' declaration to enable using bracket
- * notation to access properties.
- * Without this adjustment Flow throws
- * "Indexable signature not found in Touch".
- * See https://github.com/facebook/flow/issues/1323
- */
 type TouchPropertyKey = 'clientX' | 'clientY' | 'pageX' | 'pageY';
-
-declare class _Touch extends Touch {
-  [key: TouchPropertyKey]: number;
-}
 
 type AxisCoordinateData = {
   page: TouchPropertyKey,
@@ -56,16 +47,17 @@ var Axis: AxisType = {
 
 function getAxisCoordOfEvent(
   axis: AxisCoordinateData,
-  nativeEvent: _Touch,
+  nativeEvent: Touch,
 ): number {
   var singleTouch = TouchEventUtils.extractSingleTouch(nativeEvent);
   if (singleTouch) {
     return singleTouch[axis.page];
   }
+  // $FlowIssue https://github.com/facebook/flow/issues/1323
   return nativeEvent[axis.page];
 }
 
-function getDistance(coords: CoordinatesType, nativeEvent: _Touch): number {
+function getDistance(coords: CoordinatesType, nativeEvent: Touch): number {
   var pageX = getAxisCoordOfEvent(Axis.x, nativeEvent);
   var pageY = getAxisCoordOfEvent(Axis.y, nativeEvent);
   return Math.pow(
@@ -105,9 +97,9 @@ var TapEventPlugin = {
   eventTypes: eventTypes,
 
   extractEvents: function(
-    topLevelType: mixed,
-    targetInst: mixed,
-    nativeEvent: _Touch,
+    topLevelType: string,
+    targetInst: Fiber,
+    nativeEvent: any,
     nativeEventTarget: EventTarget,
   ) {
     if (!isStartish(topLevelType) && !isEndish(topLevelType)) {
