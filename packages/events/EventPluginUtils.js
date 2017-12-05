@@ -9,25 +9,15 @@ import ReactErrorUtils from 'shared/ReactErrorUtils';
 import invariant from 'fbjs/lib/invariant';
 import warning from 'fbjs/lib/warning';
 
-export let getFiberCurrentPropsFromNode = null;
-export let getInstanceFromNode = null;
-export let getNodeFromInstance = null;
+import {
+  getFiberCurrentPropsFromNode,
+  getInstanceFromNode,
+  getNodeFromInstance,
+} from './ReactComponentTree';
 
-export const injection = {
-  injectComponentTree: function(Injected) {
-    ({
-      getFiberCurrentPropsFromNode,
-      getInstanceFromNode,
-      getNodeFromInstance,
-    } = Injected);
-    if (__DEV__) {
-      warning(
-        getNodeFromInstance && getInstanceFromNode,
-        'EventPluginUtils.injection.injectComponentTree(...): Injected ' +
-          'module is missing getNodeFromInstance or getInstanceFromNode.',
-      );
-    }
-  },
+export {
+  getInstanceFromNode,
+  getFiberCurrentPropsFromNode
 };
 
 export function isEndish(topLevelType) {

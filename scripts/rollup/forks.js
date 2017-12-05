@@ -101,6 +101,15 @@ const forks = Object.freeze({
         return null;
     }
   },
+
+  'events/ReactComponentTree': (bundleType, entry) => {
+    switch (entry) {
+      case 'react-dom':
+        return 'events/forks/ReactComponentTree.dom.js';
+      default:
+        return null;
+    }
+  }
 });
 
 module.exports = forks;

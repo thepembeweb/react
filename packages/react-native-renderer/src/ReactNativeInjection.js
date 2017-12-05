@@ -37,7 +37,6 @@ RCTEventEmitter.register(ReactNativeEventEmitter);
  * Inject module for resolving DOM hierarchy and plugin ordering.
  */
 EventPluginHub.injection.injectEventPluginOrder(ReactNativeEventPluginOrder);
-EventPluginUtils.injection.injectComponentTree(ReactNativeComponentTree);
 
 ResponderEventPlugin.injection.injectGlobalResponderHandler(
   ReactNativeGlobalResponderHandler,

@@ -1,5 +1,14 @@
 'use strict';
 
+jest.mock('react-dom', () => {
+  jest.mock('events/ReactComponentTree', () => {
+    return require.requireActual('events/forks/ReactComponentTree.dom.js')
+  })
+
+  const ReactDOM = require.requireActual('react-dom');
+  return ReactDOM;
+})
+
 if (process.env.REACT_CLASS_EQUIVALENCE_TEST) {
   // Inside the class equivalence tester, we have a custom environment, let's
   // require that instead.
