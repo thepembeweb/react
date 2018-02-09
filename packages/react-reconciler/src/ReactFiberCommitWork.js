@@ -9,6 +9,9 @@
 
 import type {HostConfig} from 'react-reconciler';
 import type {Fiber} from './ReactFiber';
+import type {FiberRoot} from './ReactFiber';
+import type {ExpirationTime} from './ReactFiberExpirationTime';
+import type {CapturedValue, CapturedError} from './ReactCapturedValue';
 
 import {
   enableMutatingReconciler,
@@ -22,6 +25,8 @@ import {
   HostText,
   HostPortal,
   CallComponent,
+  AsyncBoundary,
+  TimeoutComponent,
 } from 'shared/ReactTypeOfWork';
 import ReactErrorUtils from 'shared/ReactErrorUtils';
 import {Placement, Update, ContentReset} from 'shared/ReactTypeOfSideEffect';
@@ -30,6 +35,10 @@ import invariant from 'fbjs/lib/invariant';
 import {commitCallbacks} from './ReactFiberUpdateQueue';
 import {onCommitUnmount} from './ReactFiberDevToolsHook';
 import {startPhaseTimer, stopPhaseTimer} from './ReactDebugFiberPerf';
+import {insertUpdateIntoFiber} from './ReactFiberUpdateQueue';
+import {logCapturedError} from './ReactFiberErrorLogger';
+import getComponentName from 'shared/getComponentName';
+import {getStackAddendumByWorkInProgressFiber} from 'shared/ReactFiberComponentTreeHook';
 
 const {
   invokeGuardedCallback,
@@ -37,9 +46,57 @@ const {
   clearCaughtError,
 } = ReactErrorUtils;
 
+export function logError(boundary: Fiber, errorInfo: CapturedValue<mixed>) {
+  const source = errorInfo.source;
+  let stack = errorInfo.stack;
+  if (stack === null) {
+    stack = getStackAddendumByWorkInProgressFiber(source);
+  }
+
+  const capturedError: CapturedError = {
+    componentName: source !== null ? getComponentName(source) : null,
+    error: errorInfo.value,
+    errorBoundary: boundary,
+    componentStack: stack !== null ? stack : '',
+    errorBoundaryName: null,
+    errorBoundaryFound: false,
+    willRetry: false,
+  };
+
+  if (boundary !== null) {
+    capturedError.errorBoundaryName = getComponentName(boundary);
+    capturedError.errorBoundaryFound = capturedError.willRetry =
+      boundary.tag === ClassComponent;
+  } else {
+    capturedError.errorBoundaryName = null;
+    capturedError.errorBoundaryFound = capturedError.willRetry = false;
+  }
+
+  try {
+    logCapturedError(capturedError);
+  } catch (e) {
+    // Prevent cycle if logCapturedError() throws.
+    // A cycle may still occur if logCapturedError renders a component that throws.
+    const suppressLogging = e && e.suppressReactErrorLogging;
+    if (!suppressLogging) {
+      console.error(e);
+    }
+  }
+}
+
 export default function<T, P, I, TI, HI, PI, C, CC, CX, PL>(
   config: HostConfig<T, P, I, TI, HI, PI, C, CC, CX, PL>,
   captureError: (failedFiber: Fiber, error: mixed) => Fiber | null,
+  scheduleWork: (
+    fiber: Fiber,
+    startTime: ExpirationTime,
+    expirationTime: ExpirationTime,
+  ) => void,
+  computeExpirationForFiber: (
+    startTime: ExpirationTime,
+    fiber: Fiber,
+  ) => ExpirationTime,
+  recalculateCurrentTime: () => ExpirationTime,
 ) {
   const {getPublicInstance, mutation, persistence} = config;
 
@@ -97,7 +154,29 @@ export default function<T, P, I, TI, HI, PI, C, CC, CX, PL>(
     }
   }
 
-  function commitLifeCycles(current: Fiber | null, finishedWork: Fiber): void {
+  function scheduleExpirationBoundaryRecovery(fiber) {
+    const currentTime = recalculateCurrentTime();
+    const expirationTime = computeExpirationForFiber(currentTime, fiber);
+    const update = {
+      expirationTime,
+      partialState: null,
+      callback: null,
+      isReplace: true,
+      isForced: false,
+      capturedValue: null,
+      next: null,
+    };
+    insertUpdateIntoFiber(fiber, update);
+    scheduleWork(fiber, currentTime, expirationTime);
+  }
+
+  function commitLifeCycles(
+    finishedRoot: FiberRoot,
+    current: Fiber | null,
+    finishedWork: Fiber,
+    currentTime: ExpirationTime,
+    committedExpirationTime: ExpirationTime,
+  ): void {
     switch (finishedWork.tag) {
       case ClassComponent: {
         const instance = finishedWork.stateNode;
@@ -165,6 +244,16 @@ export default function<T, P, I, TI, HI, PI, C, CC, CX, PL>(
         // We have no life-cycles associated with portals.
         return;
       }
+      case AsyncBoundary: {
+        return;
+      }
+      case TimeoutComponent: {
+        const promises = finishedWork.memoizedState;
+        Promise.all(promises).then(() =>
+          scheduleExpirationBoundaryRecovery(finishedWork),
+        );
+        return;
+      }
       default: {
         invariant(
           false,
@@ -172,6 +261,39 @@ export default function<T, P, I, TI, HI, PI, C, CC, CX, PL>(
             'likely caused by a bug in React. Please file an issue.',
         );
       }
+    }
+  }
+
+  function commitErrorLogging(finishedWork: Fiber) {
+    switch (finishedWork.tag) {
+      case ClassComponent:
+        {
+          const instance = finishedWork.stateNode;
+          const updateQueue = finishedWork.updateQueue;
+          invariant(
+            updateQueue !== null && updateQueue.capturedValues !== null,
+            'An error logging effect should not have been scheduled if no errors ' +
+              'were captured. This error is likely caused by a bug in React. ' +
+              'Please file an issue.',
+          );
+          const capturedErrors = updateQueue.capturedValues;
+          updateQueue.capturedValues = null;
+          instance.props = finishedWork.memoizedProps;
+          instance.state = finishedWork.memoizedState;
+          for (let i = 0; i < capturedErrors.length; i++) {
+            const errorInfo = capturedErrors[i];
+            const error = errorInfo.value;
+            logError(finishedWork, errorInfo);
+            instance.componentDidCatch(error);
+          }
+        }
+        break;
+      default:
+        invariant(
+          false,
+          'This unit of work tag cannot capture errors.  This error is ' +
+            'likely caused by a bug in React. Please file an issue.',
+        );
     }
   }
 
@@ -353,6 +475,7 @@ export default function<T, P, I, TI, HI, PI, C, CC, CX, PL>(
           commitContainer(finishedWork);
         },
         commitLifeCycles,
+        commitErrorLogging,
         commitAttachRef,
         commitDetachRef,
       };
@@ -658,6 +781,12 @@ export default function<T, P, I, TI, HI, PI, C, CC, CX, PL>(
       case HostRoot: {
         return;
       }
+      case AsyncBoundary: {
+        return;
+      }
+      case TimeoutComponent: {
+        return;
+      }
       default: {
         invariant(
           false,
@@ -679,6 +808,7 @@ export default function<T, P, I, TI, HI, PI, C, CC, CX, PL>(
       commitDeletion,
       commitWork,
       commitLifeCycles,
+      commitErrorLogging,
       commitAttachRef,
       commitDetachRef,
     };
